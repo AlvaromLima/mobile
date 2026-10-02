@@ -12,12 +12,16 @@ class TranslatorState {
     this.sourceLanguage = SourceLanguage.auto,
     this.status = TranslationStatus.initial,
     this.result,
+    this.detectedLanguage,
     this.errorMessage,
   });
 
   final SourceLanguage sourceLanguage;
   final TranslationStatus status;
   final TranslationResult? result;
+
+  /// Idioma identificado pelo backend; preenchido apenas quando a tradução foi pedida em modo automático.
+  final SourceLanguage? detectedLanguage;
   final String? errorMessage;
 
   bool get isLoading => status == TranslationStatus.loading;
@@ -38,6 +42,7 @@ class TranslatorNotifier extends Notifier<TranslatorState> {
       sourceLanguage: language,
       status: state.status,
       result: state.result,
+      detectedLanguage: state.detectedLanguage,
       errorMessage: state.errorMessage,
     );
   }
@@ -55,7 +60,12 @@ class TranslatorNotifier extends Notifier<TranslatorState> {
             sourceLanguage: language.code,
           );
       if (requestId != _requestId) return;
-      state = TranslatorState(sourceLanguage: state.sourceLanguage, status: TranslationStatus.success, result: result);
+      state = TranslatorState(
+        sourceLanguage: state.sourceLanguage,
+        status: TranslationStatus.success,
+        result: result,
+        detectedLanguage: language == SourceLanguage.auto ? _languageFromCode(result.detectedLanguage) : null,
+      );
     } on TranslationFailure catch (failure) {
       if (requestId != _requestId) return;
       _fail(failure.message);
@@ -64,6 +74,9 @@ class TranslatorNotifier extends Notifier<TranslatorState> {
       _fail(const UnknownFailure().message);
     }
   }
+
+  static SourceLanguage? _languageFromCode(String? code) =>
+      SourceLanguage.values.where((l) => l != SourceLanguage.auto && l.code == code).firstOrNull;
 
   void _fail(String message) {
     state = TranslatorState(

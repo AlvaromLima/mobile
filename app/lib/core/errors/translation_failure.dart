@@ -37,6 +37,10 @@ final class ServerUnavailableFailure extends TranslationFailure {
   const ServerUnavailableFailure() : super('Serviço de tradução indisponível no momento. Tente mais tarde.');
 }
 
+final class RateLimitedFailure extends TranslationFailure {
+  const RateLimitedFailure() : super('Muitas solicitações. Aguarde alguns segundos e tente novamente.');
+}
+
 final class InvalidResponseFailure extends TranslationFailure {
   const InvalidResponseFailure() : super('Resposta inválida do servidor. Tente novamente.');
 }

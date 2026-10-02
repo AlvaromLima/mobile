@@ -83,7 +83,20 @@ class TranslationResultCard extends StatelessWidget {
           ),
         );
       case TranslationStatus.success:
-        return SelectableText(state.translatedText ?? '', style: theme.textTheme.bodyLarge);
+        final detected = state.detectedLanguage;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (detected != null) ...[
+              Text(
+                'Idioma detectado: ${detected.label}',
+                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary),
+              ),
+              const SizedBox(height: 8),
+            ],
+            SelectableText(state.translatedText ?? '', style: theme.textTheme.bodyLarge),
+          ],
+        );
       case TranslationStatus.failure:
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,

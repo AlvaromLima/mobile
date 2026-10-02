@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:tradutor/app.dart';
 import 'package:tradutor/core/constants/app_constants.dart';
 import 'package:tradutor/core/errors/translation_failure.dart';
@@ -24,12 +27,13 @@ class ControlledRepository implements TranslationRepository {
     return _completer.future;
   }
 
-  void succeed(String translated) => _completer.complete(
+  void succeed(String translated, {String? detected}) => _completer.complete(
         TranslationResult(
           originalText: requests.last.text,
           translatedText: translated,
           sourceLanguage: requests.last.sourceLanguage == 'auto' ? 'en' : requests.last.sourceLanguage,
           targetLanguage: 'pt-BR',
+          detectedLanguage: detected,
         ),
       );
 
@@ -237,16 +241,76 @@ void main() {
     expect(find.text('Tradução copiada.'), findsOneWidget);
   });
 
-  testWidgets('tradução simulada padrão responde após o carregamento', (tester) async {
-    await pumpApp(tester);
+  testWidgets('fluxo completo até o backend (simulado) mostra o idioma detectado', (tester) async {
+    late http.Request sent;
+    final backend = MockClient((request) async {
+      sent = request;
+      return http.Response.bytes(
+        utf8.encode(jsonEncode({
+          'success': true,
+          'detectedLanguage': 'es',
+          'sourceLanguage': 'es',
+          'targetLanguage': 'pt-BR',
+          'originalText': 'Buenos días',
+          'translatedText': 'Bom dia',
+        })),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [httpClientProvider.overrideWithValue(backend)],
+        child: const TradutorApp(),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Buenos días');
+    await tester.pump();
+    await tester.tap(find.text('TRADUZIR'));
+    await tester.pumpAndSettle();
+
+    expect(sent.url.path, '/api/v1/translate');
+    expect(jsonDecode(sent.body), {'text': 'Buenos días', 'sourceLanguage': 'auto', 'targetLanguage': 'pt-BR'});
+    expect(find.text('Bom dia'), findsOneWidget);
+    expect(find.text('Idioma detectado: Espanhol'), findsOneWidget);
+  });
+
+  testWidgets('backend fora do ar mostra mensagem amigável', (tester) async {
+    final backend = MockClient((_) async => throw http.ClientException('Connection refused'));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [httpClientProvider.overrideWithValue(backend)],
+        child: const TradutorApp(),
+      ),
+    );
 
     await tester.enterText(find.byType(TextField), 'Hello');
     await tester.pump();
     await tester.tap(find.text('TRADUZIR'));
-    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    expect(find.text('[Tradução simulada] Hello'), findsOneWidget);
+    expect(find.text(const ConnectionFailure().message), findsOneWidget);
+    expect(find.textContaining('Connection refused'), findsNothing);
+  });
+
+  testWidgets('idioma informado manualmente não exibe "Idioma detectado"', (tester) async {
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
+
+    await tester.tap(find.text('Detectar automaticamente'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inglês').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Hello');
+    await tester.pump();
+    await tester.tap(find.text('TRADUZIR'));
+    await tester.pump();
+    fake.succeed('Olá', detected: 'en');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Olá'), findsOneWidget);
+    expect(find.textContaining('Idioma detectado'), findsNothing);
   });
 
   for (final brightness in Brightness.values) {

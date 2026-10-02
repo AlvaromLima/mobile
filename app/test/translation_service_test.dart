@@ -3,7 +3,6 @@ import 'package:tradutor/core/constants/app_constants.dart';
 import 'package:tradutor/core/errors/translation_failure.dart';
 import 'package:tradutor/models/translation_request.dart';
 import 'package:tradutor/models/translation_result.dart';
-import 'package:tradutor/repositories/fake_translation_repository.dart';
 import 'package:tradutor/repositories/translation_repository.dart';
 import 'package:tradutor/services/translation_service.dart';
 
@@ -178,18 +177,5 @@ void main() {
       const TranslationRequest(text: 'Good morning', sourceLanguage: 'en').toJson(),
       {'text': 'Good morning', 'sourceLanguage': 'en', 'targetLanguage': 'pt-BR'},
     );
-  });
-
-  test('FakeTranslationRepository simula sem rede e informa detecção no modo auto', () async {
-    const repo = FakeTranslationRepository(delay: Duration.zero);
-
-    final auto = await repo.translate(const TranslationRequest(text: 'Hello', sourceLanguage: 'auto'));
-    expect(auto.translatedText, '[Tradução simulada] Hello');
-    expect(auto.sourceLanguage, 'en');
-    expect(auto.detectedLanguage, 'en');
-
-    final es = await repo.translate(const TranslationRequest(text: 'Hola', sourceLanguage: 'es'));
-    expect(es.sourceLanguage, 'es');
-    expect(es.detectedLanguage, isNull);
   });
 }
