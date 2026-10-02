@@ -1,0 +1,836 @@
+# PROJETO — APLICATIVO MOBILE DE TRADUÇÃO
+
+## Objetivo geral
+
+Desenvolver um aplicativo mobile para Android e iOS capaz de traduzir:
+
+- Inglês → Português do Brasil
+- Espanhol → Português do Brasil
+
+O aplicativo também deverá permitir tradução através da voz.
+
+## Tecnologias principais
+
+Frontend:
+- Flutter
+- Dart
+
+Backend:
+- Node.js
+- Express
+- TypeScript
+
+Integrações:
+- API de tradução
+- Speech-to-Text
+- Text-to-Speech
+
+IMPORTANTE:
+
+Este projeto NÃO terá:
+
+- banco de dados
+- PostgreSQL
+- SQLite
+- histórico
+- favoritos
+- cadastro
+- login
+
+O aplicativo não deverá armazenar as traduções realizadas.
+
+---
+
+# PROMPT 1 — ARQUITETURA DO PROJETO (Feito)
+
+Quero iniciar um aplicativo mobile de tradução utilizando Flutter e Dart.
+
+O aplicativo deverá funcionar em Android e iOS.
+
+Idiomas de entrada:
+
+- Inglês
+- Espanhol
+- Detectar automaticamente
+
+Idioma de saída:
+
+- Português do Brasil (pt-BR)
+
+Funcionalidades:
+
+1. Digitar ou colar texto.
+2. Selecionar Inglês ou Espanhol.
+3. Detectar automaticamente o idioma.
+4. Traduzir para Português do Brasil.
+5. Copiar tradução.
+6. Compartilhar tradução.
+7. Capturar voz pelo microfone.
+8. Converter voz em texto.
+9. Traduzir o texto reconhecido.
+10. Reproduzir a tradução em português através de Text-to-Speech.
+11. Tema claro e escuro.
+
+Não haverá:
+
+- banco de dados
+- histórico
+- favoritos
+- login
+- cadastro de usuários
+
+Arquitetura desejada:
+
+Flutter
+↓
+Backend Node.js
+↓
+API de tradução
+
+O backend será utilizado principalmente para proteger as credenciais da API de tradução e aplicar controles de segurança.
+
+Antes de escrever código, apresente:
+
+- arquitetura completa
+- fluxo da aplicação
+- estrutura de diretórios Flutter
+- estrutura de diretórios Node.js
+- packages Flutter recomendados
+- packages Node.js recomendados
+- gerenciamento de estado recomendado
+- estratégia para Speech-to-Text
+- estratégia para Text-to-Speech
+- estratégia para detecção automática de idioma
+- tratamento de erros
+- segurança das API Keys
+
+Não gere código ainda.
+
+Não adicione banco de dados.
+
+Não adicione funcionalidades que não foram solicitadas.
+
+---
+
+# PROMPT 2 — CRIAR PROJETO FLUTTER
+
+Agora implemente somente a estrutura inicial do aplicativo Flutter baseada na arquitetura definida anteriormente.
+
+Utilizar:
+
+- Flutter
+- Dart
+- Material Design
+- null safety
+
+Criar uma estrutura organizada semelhante a:
+
+lib/
+  core/
+    config/
+    constants/
+    errors/
+    theme/
+  models/
+  services/
+  repositories/
+  providers/
+  screens/
+  widgets/
+  utils/
+
+Criar:
+
+- main.dart
+- configuração de tema
+- tema claro
+- tema escuro
+- navegação
+- tela principal inicial
+- gerenciamento de estado
+
+Não implementar ainda a API real de tradução.
+
+Não adicionar banco de dados.
+
+Não adicionar histórico, favoritos ou autenticação.
+
+Ao terminar:
+
+1. Execute flutter analyze.
+2. Corrija os erros encontrados.
+3. Informe os arquivos criados.
+4. Informe os arquivos alterados.
+5. Mostre como executar o aplicativo.
+
+Pare após concluir essa etapa.
+
+---
+
+# PROMPT 3 — TELA PRINCIPAL DO TRADUTOR
+
+Agora desenvolva a interface da tela principal.
+
+No topo mostrar:
+
+Tradutor
+
+Criar seletor:
+
+Detectar automaticamente
+Inglês
+Espanhol
+
+Criar uma área:
+
+TEXTO ORIGINAL
+
+Com:
+
+- campo de texto multilinha
+- contador de caracteres
+- botão colar
+- botão limpar
+- botão de microfone
+
+Adicionar botão principal:
+
+TRADUZIR
+
+Depois mostrar:
+
+PORTUGUÊS DO BRASIL
+
+Criar área para mostrar a tradução.
+
+Adicionar botões:
+
+- Ouvir
+- Copiar
+- Compartilhar
+
+Estados da interface:
+
+- inicial
+- carregando
+- traduzido
+- erro
+
+Enquanto estiver traduzindo mostrar indicador de carregamento.
+
+O layout deverá ser:
+
+- moderno
+- simples
+- responsivo
+- adequado para celular
+- compatível com tema claro/escuro
+
+Neste momento utilize uma tradução simulada para testar a interface.
+
+Não conectar API real ainda.
+
+Não implementar voz ainda.
+
+Ao terminar execute flutter analyze e corrija os problemas encontrados.
+
+---
+
+# PROMPT 4 — CAMADA DE TRADUÇÃO FLUTTER
+
+Agora crie a arquitetura responsável pela tradução no Flutter.
+
+Não coloque chamadas HTTP diretamente na tela.
+
+Criar models necessários, por exemplo:
+
+TranslationRequest
+TranslationResult
+
+Criar abstrações como:
+
+TranslationService
+TranslationRepository
+
+TranslationService deverá permitir algo semelhante a:
+
+Future<TranslationResult> translate({
+  required String text,
+  required String sourceLanguage,
+  String targetLanguage = 'pt-BR',
+});
+
+Idiomas aceitos:
+
+auto
+en
+es
+
+Destino:
+
+pt-BR
+
+A interface não deverá conhecer detalhes da API externa utilizada.
+
+Preparar tratamento para:
+
+- texto vazio
+- erro de conexão
+- timeout
+- servidor indisponível
+- resposta inválida
+- idioma não suportado
+
+Ainda não conecte uma API externa diretamente no Flutter.
+
+---
+
+# PROMPT 5 — CRIAR BACKEND NODE.JS
+
+Agora crie o backend do projeto.
+
+Utilizar:
+
+- Node.js
+- Express
+- TypeScript
+
+Não utilizar banco de dados.
+
+Criar estrutura organizada:
+
+src/
+  config/
+  controllers/
+  routes/
+  services/
+  providers/
+  middlewares/
+  validators/
+  types/
+  utils/
+
+Criar endpoint:
+
+POST /api/v1/translate
+
+Entrada:
+
+{
+  "text": "Good morning",
+  "sourceLanguage": "en",
+  "targetLanguage": "pt-BR"
+}
+
+Saída:
+
+{
+  "success": true,
+  "detectedLanguage": "en",
+  "sourceLanguage": "en",
+  "targetLanguage": "pt-BR",
+  "originalText": "Good morning",
+  "translatedText": "Bom dia"
+}
+
+sourceLanguage deverá aceitar:
+
+auto
+en
+es
+
+Adicionar:
+
+- validação
+- CORS
+- Helmet
+- rate limit
+- limite de tamanho da requisição
+- timeout
+- tratamento centralizado de erros
+- logs adequados
+- arquivo .env
+- .env.example
+
+Nunca colocar API Key diretamente no código.
+
+Não criar banco de dados.
+
+Ao terminar, explique como executar e testar o endpoint.
+
+---
+
+# PROMPT 6 — INTEGRAR API REAL DE TRADUÇÃO
+
+Agora implemente um provider real de tradução no backend.
+
+Antes de implementar, avalie qual serviço escolhido para o projeto possui melhor suporte para:
+
+- Inglês → Português do Brasil
+- Espanhol → Português do Brasil
+- detecção automática do idioma
+
+Mantenha a arquitetura desacoplada.
+
+Criar interface:
+
+TranslationProvider
+
+E uma implementação separada para o fornecedor escolhido.
+
+A configuração deverá ser feita pelo .env.
+
+Exemplo:
+
+TRANSLATION_PROVIDER=provider_escolhido
+TRANSLATION_API_KEY=chave
+
+Nunca enviar TRANSLATION_API_KEY para o Flutter.
+
+Fluxo:
+
+Flutter
+↓ HTTPS
+Backend Node.js
+↓
+Translation Provider
+↓
+Backend
+↓
+Flutter
+
+Caso sourceLanguage seja "auto", detectar o idioma.
+
+Aceitar somente resultados esperados para Inglês e Espanhol.
+
+Tratar erros da API externa sem expor informações sensíveis.
+
+---
+
+# PROMPT 7 — CONECTAR FLUTTER AO BACKEND
+
+Agora conecte o Flutter ao backend Node.js.
+
+Criar ou ajustar:
+
+ApiClient
+TranslationService
+TranslationRepository
+
+O Flutter deverá enviar:
+
+POST /api/v1/translate
+
+Adicionar:
+
+- timeout
+- tratamento de SocketException
+- erro HTTP
+- servidor indisponível
+- resposta JSON inválida
+- loading
+- mensagens amigáveis
+
+A URL do backend deverá ficar centralizada em configuração.
+
+Não espalhar URLs pelas telas.
+
+Ao clicar em TRADUZIR:
+
+1. Validar texto.
+2. Mostrar loading.
+3. Chamar repository.
+4. Backend realiza tradução.
+5. Mostrar resultado.
+6. Informar idioma detectado quando estiver em modo automático.
+
+Execute flutter analyze ao finalizar.
+
+---
+
+# PROMPT 8 — DETECÇÃO AUTOMÁTICA DE IDIOMA
+
+Agora finalize o funcionamento da opção:
+
+Detectar automaticamente
+
+Quando selecionada:
+
+1. Usuário digita o texto.
+2. Backend recebe sourceLanguage="auto".
+3. Serviço identifica o idioma.
+4. Validar se é Inglês ou Espanhol.
+5. Traduzir para Português do Brasil.
+6. Retornar detectedLanguage.
+7. Flutter apresenta o idioma detectado.
+
+Mostrar:
+
+Idioma detectado: Inglês
+
+ou:
+
+Idioma detectado: Espanhol
+
+Caso seja detectado outro idioma, informar ao usuário que atualmente o aplicativo aceita somente Inglês e Espanhol.
+
+Não tentar traduzir idiomas não suportados.
+
+---
+
+# PROMPT 9 — PREPARAR TRADUÇÃO POR VOZ
+
+Agora iniciaremos a funcionalidade de voz.
+
+O fluxo será:
+
+Usuário toca no microfone
+↓
+Usuário fala em Inglês ou Espanhol
+↓
+Speech-to-Text
+↓
+Texto reconhecido
+↓
+TranslationService existente
+↓
+Backend
+↓
+Tradução em Português
+↓
+Text-to-Speech opcional
+
+Antes de implementar, analise os packages Flutter atuais e compatíveis com a versão do projeto para:
+
+- Speech-to-Text
+- Text-to-Speech
+- permissões de microfone
+
+Depois crie abstrações:
+
+SpeechRecognitionService
+
+TextToSpeechService
+
+Não duplique a lógica de tradução.
+
+A tradução proveniente da voz deverá utilizar o mesmo TranslationRepository usado pela tradução digitada.
+
+---
+
+# PROMPT 10 — MICROFONE E SPEECH-TO-TEXT
+
+Agora implemente o reconhecimento de voz.
+
+Adicionar permissão de microfone para:
+
+- Android
+- iOS
+
+Fluxo:
+
+1. Usuário toca no botão do microfone.
+2. Verificar permissão.
+3. Solicitar caso necessário.
+4. Começar reconhecimento.
+5. Mostrar "Ouvindo..."
+6. Exibir texto reconhecido.
+7. Permitir parar.
+8. Colocar texto reconhecido no campo de texto original.
+
+Estados:
+
+- parado
+- solicitando permissão
+- ouvindo
+- processando
+- concluído
+- erro
+
+Tratar:
+
+- permissão recusada
+- permissão permanentemente recusada
+- microfone indisponível
+- usuário não falou
+- fala não reconhecida
+- interrupção
+- erro do serviço
+
+Não permitir que esses erros fechem o aplicativo.
+
+---
+
+# PROMPT 11 — TRADUZIR AUTOMATICAMENTE A VOZ
+
+Agora conecte o Speech-to-Text à tradução.
+
+Fluxo completo:
+
+Usuário toca no microfone.
+
+Fala:
+
+"Good morning, how are you?"
+
+Speech-to-Text retorna:
+
+Good morning, how are you?
+
+Detectar idioma:
+
+Inglês
+
+Enviar pelo TranslationRepository existente.
+
+Backend traduz.
+
+Mostrar:
+
+Bom dia, como você está?
+
+O mesmo deverá funcionar para Espanhol.
+
+Não criar outro endpoint específico para voz.
+
+Não duplicar TranslationService.
+
+A voz deverá ser convertida em texto e depois utilizar exatamente o mesmo fluxo de tradução existente.
+
+---
+
+# PROMPT 12 — TEXT-TO-SPEECH
+
+Agora implemente Text-to-Speech.
+
+Na área:
+
+PORTUGUÊS DO BRASIL
+
+Adicionar botão:
+
+Ouvir
+
+Ao pressionar:
+
+O aplicativo deverá ler o texto traduzido utilizando voz Português do Brasil.
+
+Adicionar:
+
+- play
+- stop
+
+Configurar locale:
+
+pt-BR
+
+Caso exista mais de uma voz pt-BR disponível, utilizar uma voz adequada suportada pelo dispositivo.
+
+Tratar:
+
+- TTS indisponível
+- idioma indisponível
+- interrupção
+- erro de reprodução
+
+Não deixar o aplicativo travar.
+
+---
+
+# PROMPT 13 — MELHORAR INTERFACE DE VOZ
+
+Agora melhore a experiência visual da funcionalidade de voz.
+
+Botão principal de microfone.
+
+Estados:
+
+Normal:
+"Toque para falar"
+
+Capturando:
+"Ouvindo..."
+
+Processando:
+"Processando..."
+
+Traduzindo:
+"Traduzindo..."
+
+Resultado:
+mostrar tradução.
+
+Enquanto estiver ouvindo, criar uma animação simples indicando que o microfone está ativo.
+
+Não utilizar animações pesadas.
+
+Mostrar:
+
+- idioma detectado
+- texto reconhecido
+- tradução em Português
+- botão ouvir
+- copiar
+- compartilhar
+
+Verifique funcionamento em telas pequenas e grandes.
+
+---
+
+# PROMPT 14 — REVISÃO DE SEGURANÇA E TESTES
+
+Agora faça uma revisão completa do projeto antes de gerar o aplicativo.
+
+FRONTEND:
+
+Verifique:
+
+- API Keys expostas
+- permissões
+- tratamento de erros
+- HTTPS
+- configurações de produção
+- logs indevidos
+- dependências vulneráveis
+
+BACKEND:
+
+Verifique:
+
+- .env
+- API Keys
+- CORS
+- Helmet
+- rate limit
+- validação de entrada
+- limite de caracteres
+- limite de requisições
+- timeout
+- sanitização
+- exposição de stack trace
+- mensagens de erro
+- dependências vulneráveis
+
+Criar testes para:
+
+- Inglês → Português
+- Espanhol → Português
+- detecção automática
+- texto vazio
+- texto muito grande
+- API externa indisponível
+- timeout
+- Speech-to-Text
+- Text-to-Speech
+
+Utilizar mocks quando necessário.
+
+Não utilizar APIs pagas nos testes automatizados.
+
+Primeiro apresente os problemas encontrados classificados como:
+
+CRÍTICO
+ALTO
+MÉDIO
+BAIXO
+
+Depois faça as correções necessárias.
+
+---
+
+# PROMPT 15 — PREPARAR APK E PRODUÇÃO
+
+Agora faça a revisão final e prepare o aplicativo Android para build.
+
+Verificar:
+
+- nome do aplicativo
+- package/applicationId
+- versão
+- build number
+- ícone
+- splash screen
+- permissões de internet
+- permissão de microfone
+- configuração de release
+- API backend de produção
+- HTTPS
+- nenhuma API Key no APK
+- Speech-to-Text
+- Text-to-Speech
+- tema claro
+- tema escuro
+
+Executar:
+
+flutter analyze
+
+Executar testes automatizados.
+
+Corrigir todos os erros antes do build.
+
+Depois gerar instruções para:
+
+APK de teste
+
+APK release
+
+Android App Bundle (.aab)
+
+Apresentar checklist final:
+
+[ ] Tradução Inglês → Português
+[ ] Tradução Espanhol → Português
+[ ] Detecção automática
+[ ] Digitação
+[ ] Colar texto
+[ ] Limpar
+[ ] Copiar
+[ ] Compartilhar
+[ ] Microfone
+[ ] Speech-to-Text
+[ ] Tradução da fala
+[ ] Text-to-Speech pt-BR
+[ ] Tema claro/escuro
+[ ] Tratamento de erros
+[ ] Backend protegido
+[ ] API Key protegida
+[ ] HTTPS
+[ ] Testes
+[ ] APK
+[ ] AAB
+
+Marcar cada item como:
+
+OK
+PENDENTE
+ERRO
+
+Não considerar o projeto concluído enquanto houver ERRO.
+
+---
+
+# REGRA GERAL PARA TODOS OS PROMPTS
+
+Sempre siga estas regras durante todo o desenvolvimento:
+
+1. Antes de alterar qualquer arquivo, analise o código existente.
+2. Não recrie o projeto a cada novo prompt.
+3. Continue trabalhando sobre o projeto existente.
+4. Não remova funcionalidades que já estejam funcionando.
+5. Não adicionar banco de dados.
+6. Não adicionar histórico.
+7. Não adicionar favoritos.
+8. Não adicionar cadastro ou login.
+9. Não expor API Keys no Flutter.
+10. Não colocar secrets no Git.
+11. Não duplicar código.
+12. Manter separação entre UI, services e repositories.
+13. Manter compatibilidade Android e iOS.
+14. Informar todos os arquivos criados.
+15. Informar todos os arquivos modificados.
+16. Executar validações/testes apropriados após cada alteração.
+17. Corrigir erros antes de encerrar a etapa.
+18. Explicar como testar o que foi implementado.
+19. Não iniciar o próximo prompt automaticamente.
+20. Aguarde minha autorização antes de continuar para a próxima etapa.
