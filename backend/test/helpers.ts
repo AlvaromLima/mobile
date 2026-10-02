@@ -1,7 +1,13 @@
 import type { AddressInfo } from 'node:net';
 import { buildApp } from '../src/app.ts';
 import type { AppConfig } from '../src/config/env.ts';
-import type { ProviderRequest, ProviderResult, TranslationProvider } from '../src/providers/translation-provider.ts';
+import type {
+  DetectRequest,
+  DetectResult,
+  ProviderRequest,
+  ProviderResult,
+  TranslationProvider,
+} from '../src/providers/translation-provider.ts';
 import { createLogger } from '../src/utils/logger.ts';
 
 export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
@@ -19,17 +25,28 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   };
 }
 
-/** Provider falso que registra as chamadas. */
-export function fakeProvider(respond: (request: ProviderRequest) => ProviderResult | Promise<ProviderResult>) {
+/**
+ * Provider falso que registra as chamadas. `calls` são as traduções; `detectCalls`, as detecções.
+ * Por padrão, a detecção responde inglês.
+ */
+export function fakeProvider(
+  translate: (request: ProviderRequest) => ProviderResult | Promise<ProviderResult>,
+  detect: (request: DetectRequest) => DetectResult | Promise<DetectResult> = () => ({ language: 'en' }),
+) {
   const calls: ProviderRequest[] = [];
+  const detectCalls: DetectRequest[] = [];
   const provider: TranslationProvider = {
     name: 'fake',
+    detect: async (request) => {
+      detectCalls.push(request);
+      return detect(request);
+    },
     translate: async (request) => {
       calls.push(request);
-      return respond(request);
+      return translate(request);
     },
   };
-  return { provider, calls };
+  return { provider, calls, detectCalls };
 }
 
 export function captureLogs() {

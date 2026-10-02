@@ -12,10 +12,9 @@ async function errorCode(res: Response): Promise<string> {
 }
 
 describe('POST /api/v1/translate', () => {
-  const { provider, calls } = fakeProvider((request) =>
-    request.text === 'Bonjour'
-      ? { translatedText: 'Olá', detectedLanguage: 'fr' }
-      : { translatedText: 'Bom dia', ...(request.from ? {} : { detectedLanguage: 'en' }) },
+  const { provider, calls } = fakeProvider(
+    () => ({ translatedText: 'Bom dia' }),
+    (request) => ({ language: request.text === 'Bonjour' ? 'fr' : 'en' }),
   );
   let server: TestServer;
   before(async () => { server = await startServer({ provider }); });
@@ -49,12 +48,14 @@ describe('POST /api/v1/translate', () => {
     assert.equal(body.sourceLanguage, 'en');
   });
 
-  it('idioma detectado fora de EN/ES retorna 422 sem tradução', async () => {
+  it('idioma detectado fora de EN/ES retorna 422 sem chamar a tradução', async () => {
+    const before = calls.length;
     const res = await server.post({ text: 'Bonjour', sourceLanguage: 'auto' });
     assert.equal(res.status, 422);
     const body = (await res.json()) as ErrorBody & { translatedText?: string };
     assert.equal(body.error.code, 'UNSUPPORTED_LANGUAGE');
     assert.equal(body.translatedText, undefined);
+    assert.equal(calls.length, before, 'tradução não pode ser tentada');
   });
 
   const invalidBodies: [string, unknown][] = [

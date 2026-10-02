@@ -25,7 +25,7 @@ Azure AI Translator, plano F0, chamado pelo backend via REST (Text Translation v
 ## Consequências
 
 - Custo zero dentro da cota; sem risco de cobrança surpresa no F0.
-- Detecção e tradução em uma única chamada; o backend aceita apenas `en` e `es` como resultado da detecção.
+- No modo automático, detecção (`/detect`) e tradução (`/translate`) são chamadas separadas: o idioma é validado antes, e texto fora de `en`/`es` nunca é traduzido (exigência da especificação, etapa 8). A detecção avulsa não é cobrada por caracteres (resposta da Microsoft no Microsoft Q&A, consultada em 2026-10-02), então o desenho também evita gastar cota com idioma não suportado. Custo: uma chamada a mais, cerca de 150 a 300 ms, só no modo automático.
 - O provider fica atrás da interface `TranslationProvider`; trocar de fornecedor afeta um arquivo e a configuração.
 - Chave estática no backend (`TRANSLATION_API_KEY`), injetada por variável de ambiente ou secret manager. Deve ser rotacionada se houver suspeita de vazamento.
 

@@ -6,10 +6,14 @@ export function azureJson(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-export function azureOk(text: string, detected?: string): Response {
-  return azureJson(200, [
-    { ...(detected ? { detectedLanguage: { language: detected, score: 1 } } : {}), translations: [{ text, to: 'pt' }] },
-  ]);
+/** Resposta de sucesso do /translate. */
+export function azureOk(text: string): Response {
+  return azureJson(200, [{ translations: [{ text, to: 'pt' }] }]);
+}
+
+/** Resposta de sucesso do /detect. */
+export function azureDetected(language: string): Response {
+  return azureJson(200, [{ language, score: 1, isTranslationSupported: true, isTransliterationSupported: false }]);
 }
 
 /** fetch falso que consome uma resposta por chamada. */

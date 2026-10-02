@@ -276,6 +276,34 @@ void main() {
     expect(find.text('Idioma detectado: Espanhol'), findsOneWidget);
   });
 
+  testWidgets('idioma não suportado detectado pelo backend informa que só aceita inglês e espanhol', (tester) async {
+    final backend = MockClient(
+      (_) async => http.Response.bytes(
+        utf8.encode(jsonEncode({
+          'success': false,
+          'error': {'code': 'UNSUPPORTED_LANGUAGE', 'message': 'mensagem do servidor', 'requestId': 'x'},
+        })),
+        422,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [httpClientProvider.overrideWithValue(backend)],
+        child: const TradutorApp(),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Bonjour, comment ça va?');
+    await tester.pump();
+    await tester.tap(find.text('TRADUZIR'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No momento, o aplicativo aceita somente textos em inglês ou espanhol.'), findsOneWidget);
+    expect(find.textContaining('Idioma detectado'), findsNothing);
+    expect(isEnabled(tester, 'Copiar'), isFalse);
+  });
+
   testWidgets('backend fora do ar mostra mensagem amigável', (tester) async {
     final backend = MockClient((_) async => throw http.ClientException('Connection refused'));
     await tester.pumpWidget(

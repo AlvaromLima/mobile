@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createAzureTranslationProvider } from '../src/providers/azure-translation.provider.ts';
-import { azureJson, azureOk, fakeFetch } from './azure-fakes.ts';
+import { azureDetected, azureJson, azureOk, fakeFetch } from './azure-fakes.ts';
 import { type ErrorBody, startServer } from './helpers.ts';
 
 const FAKE_KEY = 'chave-ficticia-integracao';
@@ -20,9 +20,16 @@ function azureProvider(fetchFn: typeof fetch) {
   });
 }
 
+function paths(calls: { url: string }[]): string[] {
+  return calls.map((c) => {
+    const url = new URL(c.url);
+    return `${url.pathname}${url.searchParams.has('from') ? `?from=${url.searchParams.get('from') ?? ''}` : ''}`;
+  });
+}
+
 describe('integração com Azure (simulado)', () => {
-  it('inglês para pt-BR com idioma informado', async () => {
-    const { fn } = fakeFetch(() => Promise.resolve(azureOk('Bom dia')));
+  it('inglês informado: uma única chamada ao /translate', async () => {
+    const { fn, calls } = fakeFetch(() => Promise.resolve(azureOk('Bom dia')));
     const s = await startServer({ provider: azureProvider(fn) });
     try {
       const res = await s.post({ text: 'Good morning', sourceLanguage: 'en', targetLanguage: 'pt-BR' });
@@ -35,34 +42,39 @@ describe('integração com Azure (simulado)', () => {
         originalText: 'Good morning',
         translatedText: 'Bom dia',
       });
+      assert.deepEqual(paths(calls), ['/translate?from=en']);
     } finally {
       await s.close();
     }
   });
 
-  it('espanhol detectado automaticamente (variante regional normalizada)', async () => {
-    const { fn } = fakeFetch(() => Promise.resolve(azureOk('Bom dia, como você está?', 'es-MX')));
+  it('auto em espanhol: /detect e depois /translate com from=es', async () => {
+    const { fn, calls } = fakeFetch(
+      () => Promise.resolve(azureDetected('es')),
+      () => Promise.resolve(azureOk('Bom dia, como você está?')),
+    );
     const s = await startServer({ provider: azureProvider(fn) });
     try {
       const res = await s.post({ text: 'Buenos días, ¿cómo estás?', sourceLanguage: 'auto', targetLanguage: 'pt-BR' });
       assert.equal(res.status, 200);
-      const body = (await res.json()) as { detectedLanguage: string; translatedText: string };
+      const body = (await res.json()) as { detectedLanguage: string; sourceLanguage: string; translatedText: string };
       assert.equal(body.detectedLanguage, 'es');
+      assert.equal(body.sourceLanguage, 'es');
       assert.equal(body.translatedText, 'Bom dia, como você está?');
+      assert.deepEqual(paths(calls), ['/detect', '/translate?from=es']);
     } finally {
       await s.close();
     }
   });
 
-  it('idioma detectado não suportado retorna 422 sem tradução', async () => {
-    const { fn } = fakeFetch(() => Promise.resolve(azureOk('Bom dia', 'fr')));
+  it('auto em idioma não suportado: só /detect, 422 e nenhuma tradução', async () => {
+    const { fn, calls } = fakeFetch(() => Promise.resolve(azureDetected('fr')));
     const s = await startServer({ provider: azureProvider(fn) });
     try {
-      const res = await s.post({ text: 'Bonjour', sourceLanguage: 'auto' });
+      const res = await s.post({ text: 'Bonjour, comment ça va?', sourceLanguage: 'auto' });
       assert.equal(res.status, 422);
-      const raw = await res.text();
-      assert.equal((JSON.parse(raw) as ErrorBody).error.code, 'UNSUPPORTED_LANGUAGE');
-      assert.ok(!raw.includes('Bom dia'));
+      assert.equal(((await res.json()) as ErrorBody).error.code, 'UNSUPPORTED_LANGUAGE');
+      assert.deepEqual(paths(calls), ['/detect']);
     } finally {
       await s.close();
     }
@@ -86,7 +98,7 @@ describe('integração com Azure (simulado)', () => {
     );
     const s = await startServer({ provider: azureProvider(fn) });
     try {
-      const res = await s.post({ text: 'Hello', sourceLanguage: 'en' });
+      const res = await s.post({ text: 'Hello', sourceLanguage: 'auto' });
       assert.equal(res.status, 502);
       const raw = await res.text();
       assert.equal((JSON.parse(raw) as ErrorBody).error.code, 'PROVIDER_UNAVAILABLE');
