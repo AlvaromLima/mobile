@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Abertura: mesma superfície do tema escuro do app. -->
+    <color name="splash_background">#111318</color>
+</resources>

@@ -1,12 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Assinatura de release: credenciais em android/key.properties, fora do git (ver app/README.md).
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
+
 android {
     namespace = "br.com.itscs.tradutor"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 14.1 exige compilar contra a API 37. Só a API de compilação muda:
+    // targetSdk (comportamento em execução) e minSdk (aparelhos suportados) seguem os padrões do Flutter.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,7 +26,6 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "br.com.itscs.tradutor"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -29,11 +39,31 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Sem key.properties, assina com a chave de debug apenas para testes locais
+            // (`flutter run --release`, APK de validação). O AAB para a Play Store exige a chave de release.
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
+        }
+    }
+}
+
+// Impede gerar o pacote da Play Store (AAB) assinado com a chave de debug.
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    doFirst {
+        if (!hasReleaseKey) {
+            throw GradleException("android/key.properties ausente: o AAB de release precisa da chave de upload (ver app/README.md).")
         }
     }
 }

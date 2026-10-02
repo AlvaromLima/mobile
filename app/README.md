@@ -61,6 +61,59 @@ Com backend publicado:
 /c/Users/Alvaro/development/flutter/bin/flutter run --dart-define=API_BASE_URL=https://api.exemplo.com.br
 ```
 
+## Build Android
+
+Ferramentas (instaladas fora do PATH):
+
+| Ferramenta | Local |
+|---|---|
+| Flutter 3.47.6 | `C:\Users\Alvaro\development\flutter` |
+| JDK 21 (Temurin) | `C:\Users\Alvaro\development\jdk\jdk-21.0.12.1+1` |
+| Android SDK (plataforma 36, build-tools 36.0.0, NDK 28.2) | `C:\Users\Alvaro\development\android-sdk` |
+
+O Flutter já está configurado (`flutter config --android-sdk ... --jdk-dir ...`).
+
+### Chave de assinatura (upload key)
+
+- Keystore: `C:\Users\Alvaro\development\keys\tradutor-upload.jks` (alias `upload`, RSA 4096, validade de 10.000 dias). Fora do repositório.
+- Credenciais: `android/key.properties`, ignorado pelo git. Formato: `storeFile`, `keyAlias`, `storePassword`, `keyPassword`.
+- Sem `key.properties`, o APK de release é assinado com a chave de debug (só para teste local) e o AAB falha de propósito.
+- Backup obrigatório: o keystore e o `key.properties` devem ir para o cofre da TI. Sem eles não é possível publicar atualizações.
+- Recomendado: ativar o Play App Signing no Play Console. A chave de assinatura final fica com o Google e esta passa a ser só a chave de upload, que pode ser substituída se for perdida.
+
+### Comandos
+
+APK de teste (debug, aponta para o backend local):
+
+```bash
+/c/Users/Alvaro/development/flutter/bin/flutter build apk --debug
+```
+
+APK release (exige URL HTTPS do backend publicado):
+
+```bash
+/c/Users/Alvaro/development/flutter/bin/flutter build apk --release --dart-define=API_BASE_URL=https://SEU-BACKEND
+```
+
+Android App Bundle para a Play Store (exige `key.properties`):
+
+```bash
+/c/Users/Alvaro/development/flutter/bin/flutter build appbundle --release --dart-define=API_BASE_URL=https://SEU-BACKEND
+```
+
+Saídas: `build/app/outputs/flutter-apk/app-debug.apk`, `build/app/outputs/flutter-apk/app-release.apk` e `build/app/outputs/bundle/release/app-release.aab`.
+
+Para instalar um APK num celular Android por USB (depuração USB ativada):
+
+```bash
+/c/Users/Alvaro/development/android-sdk/platform-tools/adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+### Ícone e abertura
+
+- Ícone provisório (símbolo de tradução sobre o azul do tema), gerado por `flutter test tool/generate_icons_test.dart`. Para trocar pela arte oficial, substituir os PNGs em `android/app/src/main/res/mipmap-*` e `ios/Runner/Assets.xcassets/AppIcon.appiconset`.
+- Abertura: cor da superfície do tema (clara `#F9F9FF`, escura `#111318`) no Android e no iOS; no Android 12+ o sistema mostra o ícone sobre essa cor.
+
 ## Gates
 
 ```bash
