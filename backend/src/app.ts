@@ -5,7 +5,7 @@ import { corsMiddleware } from './middlewares/cors.ts';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.ts';
 import { rateLimitMiddleware } from './middlewares/rate-limit.ts';
 import { requestContext } from './middlewares/request-context.ts';
-import { createMockTranslationProvider } from './providers/mock-translation.provider.ts';
+import { createTranslationProvider } from './providers/index.ts';
 import type { TranslationProvider } from './providers/translation-provider.ts';
 import { healthRoutes } from './routes/health.routes.ts';
 import { translateRoutes } from './routes/translate.routes.ts';
@@ -14,7 +14,7 @@ import { createLogger, type Logger } from './utils/logger.ts';
 
 export interface BuildAppOptions {
   config: AppConfig;
-  /** Injetável para testes. Padrão nesta etapa: provider simulado. */
+  /** Injetável para testes. Padrão: provider definido em TRANSLATION_PROVIDER. */
   provider?: TranslationProvider;
   logger?: Logger;
 }
@@ -27,7 +27,7 @@ const BODY_LIMIT = '32kb';
 
 export function buildApp({ config, provider, logger }: BuildAppOptions): Express {
   const log = logger ?? createLogger({ level: config.logLevel });
-  const service = createTranslationService(provider ?? createMockTranslationProvider(), {
+  const service = createTranslationService(provider ?? createTranslationProvider(config.translation), {
     timeoutMs: config.translationTimeoutMs,
   });
 

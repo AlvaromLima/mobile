@@ -14,7 +14,8 @@ const logger = createLogger({ level: config.logLevel });
 const app = buildApp({ config, logger });
 
 const server = app.listen(config.port, config.host, () => {
-  logger.info('servidor iniciado', { host: config.host, port: config.port });
+  // Registra só o nome do provider; a configuração completa contém a chave e nunca é logada.
+  logger.info('servidor iniciado', { host: config.host, port: config.port, provider: config.translation.provider });
 });
 // Timeouts do servidor HTTP contra conexões lentas (slowloris) e requisições penduradas.
 server.requestTimeout = 30_000;

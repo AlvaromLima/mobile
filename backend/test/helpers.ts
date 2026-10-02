@@ -14,6 +14,7 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     rateLimitWindowMs: 60_000,
     corsOrigins: [],
     translationTimeoutMs: 2_000,
+    translation: { provider: 'mock' },
     ...overrides,
   };
 }

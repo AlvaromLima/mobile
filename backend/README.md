@@ -2,7 +2,10 @@
 
 API Express + TypeScript entre o app e o serviço de tradução. Protege a credencial do provider, valida a entrada, limita a taxa de uso e padroniza erros. Não tem estado: sem banco, sem cache, sem sessão.
 
-Nesta etapa (5) o endpoint usa um provider simulado. A integração real com o Azure Translator F0 entra na etapa 6.
+O provider é escolhido por `TRANSLATION_PROVIDER`:
+
+- `mock` (padrão): tradução simulada, sem rede e sem credencial. Para desenvolvimento e testes.
+- `azure`: Azure AI Translator (plano F0). Exige `TRANSLATION_API_KEY`. Decisão registrada em [ADR 0001](../docs/adr/0001-provider-de-traducao.md).
 
 ## Requisitos
 
@@ -30,6 +33,15 @@ RATE_LIMIT_MAX=30
 RATE_LIMIT_WINDOW_MS=60000
 CORS_ORIGINS=
 TRANSLATION_TIMEOUT_MS=10000
+
+# mock (padrão) ou azure
+TRANSLATION_PROVIDER=mock
+# Obrigatória com azure. Nunca commitar; nunca enviar ao app.
+TRANSLATION_API_KEY=
+# Região do recurso Azure (ex.: brazilsouth). Vazia se o recurso for global.
+TRANSLATION_API_REGION=
+# Opcional. Padrão: https://api.cognitive.microsofttranslator.com
+TRANSLATION_API_ENDPOINT=
 ```
 
 | Variável | Padrão | Descrição |
@@ -42,6 +54,10 @@ TRANSLATION_TIMEOUT_MS=10000
 | RATE_LIMIT_WINDOW_MS | 60000 | Janela do rate limit |
 | CORS_ORIGINS | vazio | Origens web autorizadas, separadas por vírgula. Vazio bloqueia todas. O app mobile não depende de CORS |
 | TRANSLATION_TIMEOUT_MS | 10000 | Tempo máximo da chamada ao provider |
+| TRANSLATION_PROVIDER | mock | `mock` ou `azure` |
+| TRANSLATION_API_KEY | | Chave do recurso Azure Translator. Obrigatória com `azure` |
+| TRANSLATION_API_REGION | | Região do recurso (ex.: brazilsouth). Vazia para recurso global |
+| TRANSLATION_API_ENDPOINT | https://api.cognitive.microsofttranslator.com | Só https é aceito |
 
 O serviço não sobe se alguma variável estiver inválida. A mensagem cita só o nome da variável, nunca o valor.
 
@@ -140,9 +156,19 @@ src/
   utils/         logger e AppError
 ```
 
+## Integração com o Azure
+
+- Chamada REST `POST /translate?api-version=3.0&to=pt` (`pt` é português do Brasil no Azure).
+- Com `sourceLanguage=auto`, o parâmetro `from` é omitido e o Azure devolve o idioma detectado na mesma chamada. Resultado diferente de inglês ou espanhol retorna 422 sem tradução.
+- Timeout de 7 s por tentativa, dentro do limite geral de `TRANSLATION_TIMEOUT_MS`.
+- Um retry apenas para falhas rápidas e transitórias (rede, 429, 5xx). Sem retry em timeout, cota esgotada ou credencial inválida.
+- Mapeamento de erros: cota F0 esgotada (403001) vira `QUOTA_EXCEEDED`; credencial inválida e demais falhas viram `PROVIDER_UNAVAILABLE`. O código do Azure fica só no log.
+- O requestId é enviado como `X-ClientTraceId`, para correlação com o suporte do Azure.
+
 ## Segurança
 
 - Credenciais do provider existem apenas no ambiente do backend. Nunca no app nem no repositório.
+- A chave vai somente no header da chamada ao Azure; nunca em URL, mensagem de erro ou log (coberto por testes).
 - Helmet (headers de segurança), X-Powered-By desativado, CORS fechado por padrão.
 - Limite de corpo de 32 KB e de 5.000 caracteres por texto.
 - Timeouts: provider (TRANSLATION_TIMEOUT_MS), requisição HTTP (30 s) e headers (15 s).

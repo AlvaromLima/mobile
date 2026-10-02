@@ -6,6 +6,18 @@
 
 import { LOG_LEVELS, type LogLevel } from '../utils/logger.ts';
 
+export const TRANSLATION_PROVIDERS = ['mock', 'azure'] as const;
+
+export type TranslationConfig =
+  | { provider: 'mock' }
+  | {
+      provider: 'azure';
+      apiKey: string;
+      /** Obrigatória para recurso regional; ausente para recurso global. */
+      region: string | undefined;
+      endpoint: string;
+    };
+
 export interface AppConfig {
   port: number;
   host: string;
@@ -17,6 +29,7 @@ export interface AppConfig {
   corsOrigins: string[];
   /** Tempo máximo da chamada ao provider de tradução. */
   translationTimeoutMs: number;
+  translation: TranslationConfig;
 }
 
 export class ConfigError extends Error {
@@ -61,6 +74,35 @@ function readCorsOrigins(raw: string | undefined): string[] {
     });
 }
 
+const AZURE_DEFAULT_ENDPOINT = 'https://api.cognitive.microsofttranslator.com';
+
+function readTranslation(env: Env): TranslationConfig {
+  const provider = env.TRANSLATION_PROVIDER?.trim() || 'mock';
+  if (!(TRANSLATION_PROVIDERS as readonly string[]).includes(provider)) {
+    throw new ConfigError(`TRANSLATION_PROVIDER deve ser ${TRANSLATION_PROVIDERS.join(' ou ')}`);
+  }
+  if (provider === 'mock') return { provider: 'mock' };
+
+  const apiKey = env.TRANSLATION_API_KEY?.trim();
+  if (!apiKey) throw new ConfigError('TRANSLATION_API_KEY é obrigatória quando TRANSLATION_PROVIDER=azure');
+
+  const rawEndpoint = env.TRANSLATION_API_ENDPOINT?.trim() || AZURE_DEFAULT_ENDPOINT;
+  let endpoint: URL;
+  try {
+    endpoint = new URL(rawEndpoint);
+  } catch {
+    throw new ConfigError('TRANSLATION_API_ENDPOINT inválida');
+  }
+  if (endpoint.protocol !== 'https:') throw new ConfigError('TRANSLATION_API_ENDPOINT deve usar https');
+
+  return {
+    provider: 'azure',
+    apiKey,
+    region: env.TRANSLATION_API_REGION?.trim() || undefined,
+    endpoint: endpoint.origin,
+  };
+}
+
 export function loadConfig(env: Env = process.env): AppConfig {
   const logLevel = env.LOG_LEVEL?.trim() || 'info';
   if (!(LOG_LEVELS as readonly string[]).includes(logLevel)) throw new ConfigError('LOG_LEVEL inválido');
@@ -74,5 +116,6 @@ export function loadConfig(env: Env = process.env): AppConfig {
     rateLimitWindowMs: readInt(env, 'RATE_LIMIT_WINDOW_MS', 60_000, 1_000, 3_600_000),
     corsOrigins: readCorsOrigins(env.CORS_ORIGINS?.trim()),
     translationTimeoutMs: readInt(env, 'TRANSLATION_TIMEOUT_MS', 10_000, 1_000, 60_000),
+    translation: readTranslation(env),
   };
 }
