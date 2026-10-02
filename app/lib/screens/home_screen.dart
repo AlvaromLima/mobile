@@ -105,6 +105,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       _textController.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
     }
 
+    // Fala concluída: o texto do campo segue exatamente o mesmo fluxo da tradução digitada
+    // (TranslatorNotifier, TranslationService, TranslationRepository, POST /api/v1/translate).
+    if (next.status == VoiceStatus.completed &&
+        previous?.status != VoiceStatus.completed &&
+        _textController.text.trim().isNotEmpty) {
+      _translate();
+    }
+
     final message = next.errorMessage;
     if (next.status == VoiceStatus.failure && previous?.status != VoiceStatus.failure && message != null) {
       _showMessage(

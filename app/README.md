@@ -18,6 +18,7 @@ Tela → TranslatorNotifier → TranslationService → BackendTranslationReposit
 - Reconhecimento nativo do aparelho via `speech_to_text`; permissões via `permission_handler`. Decisões em [ADR 0002](../docs/adr/0002-voz-stt-tts.md).
 - No modo "Detectar automaticamente", o microfone pergunta o idioma da fala (inglês ou espanhol).
 - O texto reconhecido aparece no campo "Texto original" enquanto a pessoa fala.
+- Ao fim da fala, a tradução é disparada automaticamente pelo mesmo fluxo da tradução digitada (TranslatorNotifier, TranslationService, TranslationRepository e `POST /api/v1/translate`). Não existe endpoint nem serviço específico para voz.
 - Teste de voz exige aparelho físico: o simulador iOS não reconhece fala, e emuladores Android dependem do microfone do computador e do app Google.
 - iOS com CocoaPods: incluir `PERMISSION_MICROPHONE=1` e `PERMISSION_SPEECH_RECOGNIZER=1` no `post_install` do `ios/Podfile` (gerado no primeiro build num Mac).
 
