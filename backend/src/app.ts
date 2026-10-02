@@ -1,72 +1,52 @@
-import { randomUUID } from 'node:crypto';
-import type { IncomingMessage } from 'node:http';
-import helmet from '@fastify/helmet';
-import rateLimit from '@fastify/rate-limit';
-import Fastify, { type FastifyInstance } from 'fastify';
+import express, { type Express } from 'express';
+import helmet from 'helmet';
 import type { AppConfig } from './config/env.ts';
-import { AppError } from './errors/app-error.ts';
-import { registerErrorHandling } from './errors/error-handler.ts';
-import { createAzureTranslator, type TranslationProvider } from './providers/azure-translator.client.ts';
-import { registerHealthRoute } from './routes/health.route.ts';
-import { registerTranslateRoute } from './routes/translate.route.ts';
+import { corsMiddleware } from './middlewares/cors.ts';
+import { errorHandler, notFoundHandler } from './middlewares/error-handler.ts';
+import { rateLimitMiddleware } from './middlewares/rate-limit.ts';
+import { requestContext } from './middlewares/request-context.ts';
+import { createMockTranslationProvider } from './providers/mock-translation.provider.ts';
+import type { TranslationProvider } from './providers/translation-provider.ts';
+import { healthRoutes } from './routes/health.routes.ts';
+import { translateRoutes } from './routes/translate.routes.ts';
 import { createTranslationService } from './services/translation.service.ts';
+import { createLogger, type Logger } from './utils/logger.ts';
 
 export interface BuildAppOptions {
   config: AppConfig;
-  /** Injetável para testes; em produção usa o Azure Translator. */
+  /** Injetável para testes. Padrão nesta etapa: provider simulado. */
   provider?: TranslationProvider;
-  /** Destino dos logs; injetável para testes de privacidade do log. */
-  logStream?: NodeJS.WritableStream;
+  logger?: Logger;
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Aceita o X-Request-Id do app apenas se for UUID (evita injeção em log
- * e garante formato válido para o X-ClientTraceId do Azure).
+ * 5.000 caracteres podem ocupar até ~30 KB em JSON com escapes \uXXXX.
+ * Acima disso, o corpo é recusado antes da validação.
  */
-function genReqId(req: IncomingMessage): string {
-  const header = req.headers['x-request-id'];
-  return typeof header === 'string' && UUID.test(header) ? header.toLowerCase() : randomUUID();
-}
+const BODY_LIMIT = '32kb';
 
-export async function buildApp({ config, provider, logStream }: BuildAppOptions): Promise<FastifyInstance> {
-  const app = Fastify({
-    logger: logStream ? { level: config.logLevel, stream: logStream } : { level: config.logLevel },
-    genReqId,
-    // Número = quantidade de proxies confiáveis à frente do serviço (equivalente ao proxy-addr).
-    trustProxy:
-      typeof config.trustProxy === 'number'
-        ? (() => {
-            const hops = config.trustProxy;
-            return (_address: string, hop: number) => hop < hops;
-          })()
-        : config.trustProxy,
-    // 5.000 caracteres podem ocupar até ~30 KB em JSON com escapes \uXXXX.
-    bodyLimit: 32 * 1024,
-    requestTimeout: 30_000,
-    ajv: { customOptions: { coerceTypes: false, removeAdditional: false } },
+export function buildApp({ config, provider, logger }: BuildAppOptions): Express {
+  const log = logger ?? createLogger({ level: config.logLevel });
+  const service = createTranslationService(provider ?? createMockTranslationProvider(), {
+    timeoutMs: config.translationTimeoutMs,
   });
 
-  registerErrorHandling(app);
-  // A API só aceita JSON; o parser text/plain embutido do Fastify é desnecessário.
-  app.removeContentTypeParser('text/plain');
+  const app = express();
+  app.disable('x-powered-by');
+  // Necessário atrás de load balancer para o rate limit usar o IP real do cliente.
+  app.set('trust proxy', config.trustProxy);
 
-  app.addHook('onRequest', async (request, reply) => {
-    void reply.header('x-request-id', request.id);
-  });
+  app.use(requestContext(log));
+  app.use(helmet());
+  app.use(corsMiddleware(config.corsOrigins));
 
-  await app.register(helmet);
-  await app.register(rateLimit, {
-    global: true,
-    max: config.rateLimitMax,
-    timeWindow: config.rateLimitWindowMs,
-    errorResponseBuilder: () => new AppError('RATE_LIMITED'),
-  });
+  app.use(healthRoutes());
 
-  const service = createTranslationService(provider ?? createAzureTranslator(config.azure));
-  registerHealthRoute(app);
-  registerTranslateRoute(app, service);
+  app.use('/api', rateLimitMiddleware({ limit: config.rateLimitMax, windowMs: config.rateLimitWindowMs }));
+  app.use('/api', express.json({ limit: BODY_LIMIT, strict: true, type: 'application/json' }));
+  app.use('/api/v1', translateRoutes(service));
 
+  app.use(notFoundHandler);
+  app.use(errorHandler);
   return app;
 }

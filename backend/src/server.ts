@@ -1,28 +1,33 @@
 import { buildApp } from './app.ts';
 import { ConfigError, loadConfig } from './config/env.ts';
+import { createLogger } from './utils/logger.ts';
 
 let config;
 try {
   config = loadConfig();
 } catch (error) {
-  // Mensagem de configuração nunca contém o valor dos segredos, apenas o nome da variável.
   console.error(error instanceof ConfigError ? `Configuração inválida: ${error.message}` : error);
   process.exit(1);
 }
 
-const app = await buildApp({ config });
+const logger = createLogger({ level: config.logLevel });
+const app = buildApp({ config, logger });
+
+const server = app.listen(config.port, config.host, () => {
+  logger.info('servidor iniciado', { host: config.host, port: config.port });
+});
+// Timeouts do servidor HTTP contra conexões lentas (slowloris) e requisições penduradas.
+server.requestTimeout = 30_000;
+server.headersTimeout = 15_000;
 
 const shutdown = (signal: string) => {
-  app.log.info({ signal }, 'encerrando');
-  app.close().then(
-    () => process.exit(0),
-    (error: unknown) => {
-      app.log.error({ err: error }, 'falha no encerramento');
-      process.exit(1);
-    },
-  );
+  logger.info('encerrando', { signal });
+  server.close((error) => {
+    if (error) logger.error('falha no encerramento', { err: error });
+    process.exit(error ? 1 : 0);
+  });
+  // Força a saída se conexões não fecharem a tempo.
+  setTimeout(() => process.exit(1), 10_000).unref();
 };
 process.once('SIGTERM', () => { shutdown('SIGTERM'); });
 process.once('SIGINT', () => { shutdown('SIGINT'); });
-
-await app.listen({ port: config.port, host: config.host });
