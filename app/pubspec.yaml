@@ -39,6 +39,8 @@ dependencies:
     sdk: flutter
   share_plus: ^13.3.1
   http: ^1.6.0
+  speech_to_text: ^7.5.0
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +52,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  speech_to_text_platform_interface: ^2.5.0
+  permission_handler_platform_interface: ^4.4.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

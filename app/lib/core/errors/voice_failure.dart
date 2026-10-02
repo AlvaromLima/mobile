@@ -21,6 +21,11 @@ final class MicrophonePermissionPermanentlyDeniedFailure extends VoiceFailure {
       : super('O acesso ao microfone está bloqueado. Libere nas configurações do aparelho.');
 }
 
+final class MicrophoneUnavailableFailure extends VoiceFailure {
+  const MicrophoneUnavailableFailure()
+      : super('Microfone indisponível. Verifique se outro aplicativo está usando o microfone.');
+}
+
 final class SpeechUnavailableFailure extends VoiceFailure {
   const SpeechUnavailableFailure() : super('Reconhecimento de voz indisponível neste aparelho.');
 }

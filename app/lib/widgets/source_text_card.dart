@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_constants.dart';
+import '../providers/voice_input_provider.dart';
 import 'section_label.dart';
 
 /// Área do texto original: campo multilinha com contador, colar, limpar e microfone.
@@ -10,16 +11,37 @@ class SourceTextCard extends StatelessWidget {
     required this.controller,
     required this.onPaste,
     required this.onClear,
+    required this.voiceStatus,
+    required this.onMicPressed,
     this.enabled = true,
   });
 
   final TextEditingController controller;
   final VoidCallback onPaste;
   final VoidCallback onClear;
+
+  /// Situação da captura de voz; durante a escuta o botão do microfone vira "Parar".
+  final VoiceStatus voiceStatus;
+
+  /// Nulo desabilita o microfone.
+  final VoidCallback? onMicPressed;
+
+  /// Habilita o campo, colar e limpar.
   final bool enabled;
+
+  static String? _statusLabel(VoiceStatus status) => switch (status) {
+        VoiceStatus.requestingPermission => 'Solicitando permissão...',
+        VoiceStatus.listening => 'Ouvindo...',
+        VoiceStatus.processing => 'Processando...',
+        _ => null,
+      };
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isListening = voiceStatus == VoiceStatus.listening;
+    final statusLabel = _statusLabel(voiceStatus);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -55,12 +77,26 @@ class SourceTextCard extends StatelessWidget {
                 label: const Text('Limpar'),
               ),
             ),
-            // Captura de voz será implementada nas etapas de Speech-to-Text.
-            const IconButton.filledTonal(
-              onPressed: null,
-              tooltip: 'Microfone (em breve)',
-              icon: Icon(Icons.mic_none),
-            ),
+            if (isListening)
+              IconButton.filled(
+                onPressed: onMicPressed,
+                tooltip: 'Parar',
+                icon: const Icon(Icons.stop),
+              )
+            else
+              IconButton.filledTonal(
+                onPressed: onMicPressed,
+                tooltip: 'Falar',
+                icon: const Icon(Icons.mic_none),
+              ),
+            if (statusLabel != null)
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  statusLabel,
+                  style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary),
+                ),
+              ),
           ],
         ),
       ],

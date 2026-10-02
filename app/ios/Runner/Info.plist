@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O Tradutor usa o microfone para ouvir o que você fala em inglês ou espanhol e traduzir para o português.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>O Tradutor converte sua fala em texto para fazer a tradução.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- Permite HTTP apenas para endereços locais (backend de desenvolvimento). -->

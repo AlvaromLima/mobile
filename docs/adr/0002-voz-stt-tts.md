@@ -1,7 +1,7 @@
 # ADR 0002: Voz (Speech-to-Text, Text-to-Speech e permissões)
 
 Data: 2026-10-02
-Status: aceito (pendente: comportamento da voz no modo "Detectar automaticamente")
+Status: aceito
 
 ## Contexto
 
@@ -54,6 +54,19 @@ iOS:
 - Voz pt-BR depende do motor de TTS do aparelho; sem ela, o app orienta a instalação.
 - Simulador iOS não reconhece fala; teste de voz exige aparelho físico.
 
-## Pendente
+## Voz no modo "Detectar automaticamente"
 
-Reconhecedores nativos exigem o idioma antes de ouvir e não detectam o idioma pelo áudio. Falta definir o comportamento do microfone com "Detectar automaticamente" selecionado (ver relatório da etapa 9).
+Reconhecedores nativos exigem o idioma antes de ouvir e não detectam o idioma pelo áudio. Decisão do responsável (2026-10-02, opção 1):
+
+- Com "Detectar automaticamente" selecionado, ao tocar no microfone o app pergunta "Em qual idioma você vai falar?" (Inglês ou Espanhol) e ouve nesse idioma.
+- O texto reconhecido segue para tradução com `sourceLanguage=auto`, para o backend confirmar o idioma e a tela exibir "Idioma detectado".
+- Com Inglês ou Espanhol escolhido no seletor, o microfone usa esse idioma sem perguntar.
+
+Alternativas descartadas: ouvir sempre em inglês no modo automático (fala em espanhol sairia errada) e desativar o microfone nesse modo (pior experiência).
+
+## Implementação (etapa 10)
+
+- `SpeechToTextRecognitionService`: escolhe o locale disponível no aparelho (inglês: en_US, en_GB...; espanhol: es_MX, es_US, es_ES...; senão, qualquer variante do idioma), escuta por até 60 s com encerramento após 4 s de silêncio e converte os códigos de erro nativos em `VoiceFailure`.
+- `VoiceInputNotifier`: estados parado, solicitando permissão, ouvindo, processando, concluído e erro. Nenhuma falha escapa do controller.
+- App em segundo plano durante a escuta interrompe a captura e avisa o usuário. O estado `inactive` é ignorado porque também ocorre com o diálogo de permissão do sistema.
+- iOS com CocoaPods (se o projeto não usar Swift Package Manager): após o primeiro `pod install` num Mac, incluir `PERMISSION_MICROPHONE=1` e `PERMISSION_SPEECH_RECOGNIZER=1` em `GCC_PREPROCESSOR_DEFINITIONS` no `post_install` do `ios/Podfile`. Com Swift Package Manager, as chaves do Info.plist bastam.

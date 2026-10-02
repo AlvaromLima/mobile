@@ -13,6 +13,14 @@ Tela → TranslatorNotifier → TranslationService → BackendTranslationReposit
 - `BackendTranslationRepository` chama `POST /api/v1/translate` e converte os erros do backend em falhas com mensagem amigável.
 - `ApiClient` trata timeout, falta de conexão, falha de TLS e resposta inválida.
 
+## Voz (Speech-to-Text)
+
+- Reconhecimento nativo do aparelho via `speech_to_text`; permissões via `permission_handler`. Decisões em [ADR 0002](../docs/adr/0002-voz-stt-tts.md).
+- No modo "Detectar automaticamente", o microfone pergunta o idioma da fala (inglês ou espanhol).
+- O texto reconhecido aparece no campo "Texto original" enquanto a pessoa fala.
+- Teste de voz exige aparelho físico: o simulador iOS não reconhece fala, e emuladores Android dependem do microfone do computador e do app Google.
+- iOS com CocoaPods: incluir `PERMISSION_MICROPHONE=1` e `PERMISSION_SPEECH_RECOGNIZER=1` no `post_install` do `ios/Podfile` (gerado no primeiro build num Mac).
+
 ## URL do backend
 
 Centralizada em `lib/core/config/app_config.dart`, definida no build por `--dart-define=API_BASE_URL=...`.
