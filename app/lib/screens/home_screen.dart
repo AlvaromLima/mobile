@@ -12,6 +12,7 @@ import '../widgets/language_selector.dart';
 import '../widgets/source_text_card.dart';
 import '../widgets/theme_toggle_button.dart';
 import '../widgets/translation_result_card.dart';
+import '../widgets/voice_button.dart';
 
 /// Tela principal do tradutor.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   final _textController = TextEditingController();
+
+  /// Usado para rolar até a tradução quando ela fica pronta (telas pequenas).
+  final _resultKey = GlobalKey();
 
   @override
   void initState() {
@@ -164,6 +168,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     ref.read(translatorProvider.notifier).clear();
   }
 
+  /// Leva a área da tradução para a tela depois que o resultado chega.
+  void _revealResult() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final resultContext = _resultKey.currentContext;
+      if (!mounted || resultContext == null) return;
+      Scrollable.ensureVisible(
+        resultContext,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
   void _translate() {
     FocusScope.of(context).unfocus();
     ref.read(textToSpeechProvider.notifier).stop();
@@ -190,6 +208,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final voice = ref.watch(voiceInputProvider);
     ref.listen(voiceInputProvider, _onVoiceChanged);
     final playback = ref.watch(textToSpeechProvider);
+    ref.listen(translatorProvider, (previous, next) {
+      if (next.status == TranslationStatus.success && previous?.status != TranslationStatus.success) {
+        _revealResult();
+      }
+    });
     ref.listen(textToSpeechProvider, (previous, next) {
       final message = next.errorMessage;
       if (next.status == PlaybackStatus.failure && previous?.status != PlaybackStatus.failure && message != null) {
@@ -198,6 +221,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     });
 
     final busy = state.isLoading || voice.isActive;
+    // Telas baixas (ex.: 320x568): campo e microfone menores para o TRADUZIR caber sem rolar.
+    // Muito baixas (celular deitado): campo ainda menor, para o microfone aparecer.
+    final height = MediaQuery.sizeOf(context).height;
+    final compact = height < 640;
+    final fieldLines = height < 480 ? 2 : (compact ? 3 : 4);
     // Microfone fica ativo durante a escuta (para parar), mas não enquanto pede permissão ou processa.
     final micEnabled = !state.isLoading &&
         voice.status != VoiceStatus.requestingPermission &&
@@ -228,10 +256,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   enabled: !busy,
                   onPaste: _paste,
                   onClear: _clear,
-                  voiceStatus: voice.status,
-                  onMicPressed: micEnabled ? _onMicPressed : null,
+                  minLines: fieldLines,
                 ),
-                const SizedBox(height: 12),
+                Center(
+                  child: VoiceButton(
+                    status: voice.status,
+                    isTranslating: state.isLoading,
+                    onPressed: micEnabled ? _onMicPressed : null,
+                    diameter: compact ? 60 : 72,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _textController,
                   builder: (context, value, _) => FilledButton.icon(
@@ -245,6 +280,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 ),
                 const SizedBox(height: 24),
                 TranslationResultCard(
+                  key: _resultKey,
                   state: state,
                   onCopy: () => _copy(state.translatedText ?? ''),
                   onShare: (origin) => _share(state.translatedText ?? '', origin),

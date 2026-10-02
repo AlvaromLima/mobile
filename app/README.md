@@ -17,6 +17,8 @@ Tela → TranslatorNotifier → TranslationService → BackendTranslationReposit
 
 - Reconhecimento nativo do aparelho via `speech_to_text`; permissões via `permission_handler`. Decisões em [ADR 0002](../docs/adr/0002-voz-stt-tts.md).
 - No modo "Detectar automaticamente", o microfone pergunta o idioma da fala (inglês ou espanhol).
+- Botão principal de microfone abaixo do campo de texto, com status: "Toque para falar", "Ouvindo..." (anel pulsando), "Processando..." e "Traduzindo...". O pulso é desligado quando o aparelho pede para reduzir movimento.
+- Telas baixas (menos de 640 px de altura) usam microfone e campo menores para o TRADUZIR caber sem rolar; ao chegar a tradução, a tela rola até ela.
 - O texto reconhecido aparece no campo "Texto original" enquanto a pessoa fala.
 - Ao fim da fala, a tradução é disparada automaticamente pelo mesmo fluxo da tradução digitada (TranslatorNotifier, TranslationService, TranslationRepository e `POST /api/v1/translate`). Não existe endpoint nem serviço específico para voz.
 - Teste de voz exige aparelho físico: o simulador iOS não reconhece fala, e emuladores Android dependem do microfone do computador e do app Google.

@@ -25,6 +25,9 @@ class InstantRepository implements TranslationRepository {
 
 Future<ControlledTtsService> pumpApp(WidgetTester tester, {ControlledTtsService? tts, ControlledSpeechService? speech}) async {
   final service = tts ?? ControlledTtsService();
+  // Pulso do microfone desligado (reduzir movimento), para pumpAndSettle concluir durante a escuta.
+  tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -41,6 +44,9 @@ Future<ControlledTtsService> pumpApp(WidgetTester tester, {ControlledTtsService?
 Future<void> translate(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextField), text);
   await tester.pump();
+  // Depois de uma tradução a tela rola até o resultado; volta até o botão.
+  await tester.ensureVisible(find.text('TRADUZIR'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('TRADUZIR'));
   await tester.pumpAndSettle();
 }

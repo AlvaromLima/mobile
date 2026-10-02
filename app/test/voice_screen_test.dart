@@ -84,6 +84,9 @@ Future<ControlledSpeechService> pumpApp(
   TranslationRepository? repository,
 }) async {
   final service = speech ?? ControlledSpeechService();
+  // Pulso do microfone desligado (reduzir movimento), para pumpAndSettle concluir durante a escuta.
+  tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -323,6 +326,8 @@ void main() {
       // A tradução digitada passa pelo mesmo repositório.
       await tester.enterText(find.byType(TextField), 'Hello');
       await tester.pump();
+      await tester.ensureVisible(find.text('TRADUZIR'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('TRADUZIR'));
       await tester.pumpAndSettle();
       expect(repository.requests.map((r) => r.text), ['Good morning, how are you?', 'Hello']);

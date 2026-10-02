@@ -351,14 +351,28 @@ void main() {
 
       final fake = ControlledRepository();
       await pumpApp(tester, repository: fake);
+
+      // Com o campo vazio, microfone e TRADUZIR cabem sem rolar.
+      final viewport = tester.getRect(find.byType(Scaffold));
+      expect(viewport.contains(tester.getCenter(find.byTooltip('Falar'))), isTrue);
+      expect(viewport.contains(tester.getCenter(find.text('TRADUZIR'))), isTrue);
+
+      // Texto longo faz o campo crescer; o TRADUZIR continua alcançável rolando.
       await tester.enterText(find.byType(TextField), 'Good morning, how are you? ' * 20);
       await tester.pump();
+      // A lista só constrói o que está perto da tela: rola a lista principal até o botão.
+      final list = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      list.position.jumpTo(list.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('TRADUZIR'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('TRADUZIR'));
       await tester.pump();
       fake.succeed('Bom dia, como você está? ' * 20);
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
+      expect(find.text('Bom dia, como você está? ' * 20), findsOneWidget);
     });
   }
 }
