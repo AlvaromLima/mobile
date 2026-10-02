@@ -5,4 +5,7 @@ abstract final class AppConstants {
 
   /// Interface exclusivamente em português do Brasil.
   static const locale = Locale('pt', 'BR');
+
+  /// Limite de caracteres por tradução, alinhado com o backend.
+  static const maxTextLength = 5000;
 }

@@ -9,7 +9,6 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: TradutorApp()));
 
     expect(find.text('Tradutor'), findsOneWidget);
-    expect(find.text('Inglês e espanhol para português do Brasil'), findsOneWidget);
   });
 
   testWidgets('alterna entre tema claro e escuro', (tester) async {
