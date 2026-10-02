@@ -48,6 +48,21 @@ describe('integração com Azure (simulado)', () => {
     }
   });
 
+  it('espanhol informado: uma única chamada ao /translate com from=es', async () => {
+    const { fn, calls } = fakeFetch(() => Promise.resolve(azureOk('Bom dia')));
+    const s = await startServer({ provider: azureProvider(fn) });
+    try {
+      const res = await s.post({ text: 'Buenos días', sourceLanguage: 'es', targetLanguage: 'pt-BR' });
+      assert.equal(res.status, 200);
+      const body = (await res.json()) as { sourceLanguage: string; translatedText: string };
+      assert.equal(body.sourceLanguage, 'es');
+      assert.equal(body.translatedText, 'Bom dia');
+      assert.deepEqual(paths(calls), ['/translate?from=es']);
+    } finally {
+      await s.close();
+    }
+  });
+
   it('auto em espanhol: /detect e depois /translate com from=es', async () => {
     const { fn, calls } = fakeFetch(
       () => Promise.resolve(azureDetected('es')),

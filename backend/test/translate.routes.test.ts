@@ -67,6 +67,8 @@ describe('POST /api/v1/translate', () => {
     ['targetLanguage diferente de pt-BR', { text: 'Hello', sourceLanguage: 'en', targetLanguage: 'es' }],
     ['campo extra', { text: 'Hello', sourceLanguage: 'en', extra: true }],
     ['corpo em array', [{ text: 'Hello', sourceLanguage: 'en' }]],
+    ['chave __proto__ (poluição de protótipo)', '{"text":"Hello","sourceLanguage":"en","__proto__":{"admin":true}}'],
+    ['texto com tipo objeto', { text: { $gt: '' }, sourceLanguage: 'en' }],
     ['JSON malformado', '{"text": "Hello",'],
   ];
   for (const [name, body] of invalidBodies) {

@@ -31,6 +31,10 @@ LOG_LEVEL=info
 TRUST_PROXY=false
 RATE_LIMIT_MAX=30
 RATE_LIMIT_WINDOW_MS=60000
+CHAR_LIMIT_PER_CLIENT=20000
+CHAR_LIMIT_PER_CLIENT_WINDOW_MS=3600000
+CHAR_LIMIT_GLOBAL=64000
+CHAR_LIMIT_GLOBAL_WINDOW_MS=86400000
 CORS_ORIGINS=
 TRANSLATION_TIMEOUT_MS=10000
 
@@ -52,6 +56,10 @@ TRANSLATION_API_ENDPOINT=
 | TRUST_PROXY | false | true, false ou número de proxies à frente do serviço (ex.: 1 atrás de load balancer) |
 | RATE_LIMIT_MAX | 30 | Requisições por IP na janela |
 | RATE_LIMIT_WINDOW_MS | 60000 | Janela do rate limit |
+| CHAR_LIMIT_PER_CLIENT | 20000 | Caracteres por cliente (IP) por janela; 0 desativa |
+| CHAR_LIMIT_PER_CLIENT_WINDOW_MS | 3600000 | Janela do limite por cliente (1 hora) |
+| CHAR_LIMIT_GLOBAL | 64000 | Caracteres no total do serviço por janela (cota F0 mensal / 31); 0 desativa |
+| CHAR_LIMIT_GLOBAL_WINDOW_MS | 86400000 | Janela do limite global (1 dia) |
 | CORS_ORIGINS | vazio | Origens web autorizadas, separadas por vírgula. Vazio bloqueia todas. O app mobile não depende de CORS |
 | TRANSLATION_TIMEOUT_MS | 10000 | Tempo máximo da chamada ao provider |
 | TRANSLATION_PROVIDER | mock | `mock` ou `azure` |
@@ -172,5 +180,9 @@ src/
 - A chave vai somente no header da chamada ao Azure; nunca em URL, mensagem de erro ou log (coberto por testes).
 - Helmet (headers de segurança), X-Powered-By desativado, CORS fechado por padrão.
 - Limite de corpo de 32 KB e de 5.000 caracteres por texto.
+- Orçamento de caracteres em memória, por cliente (20 mil por hora) e global (64 mil por dia), para que um único cliente não esgote a cota mensal do Azure. Acima do limite por cliente: 429 `RATE_LIMITED`; acima do global: 503 `QUOTA_EXCEEDED`.
+- Em produção atrás de load balancer, `TRUST_PROXY` precisa ser definido; caso contrário, o serviço registra um aviso no início, porque todos os clientes passariam a compartilhar o mesmo limite.
+- O backend escuta HTTP; o TLS (HTTPS) deve ser feito pelo load balancer ou pela plataforma de hospedagem.
+- Testes nunca acessam a rede externa: `test/setup/no-network.ts` bloqueia qualquer host que não seja local.
 - Timeouts: provider (TRANSLATION_TIMEOUT_MS), requisição HTTP (30 s) e headers (15 s).
 - Logs em JSON com requestId, método, caminho, status e duração. Nunca registram o texto, a tradução, a query string ou o IP.

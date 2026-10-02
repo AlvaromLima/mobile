@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --test \"test/**/*.test.ts\"",
+    "test": "node --import ./test/setup/no-network.ts --test \"test/**/*.test.ts\"",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {

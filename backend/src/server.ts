@@ -13,6 +13,12 @@ try {
 const logger = createLogger({ level: config.logLevel });
 const app = buildApp({ config, logger });
 
+if (process.env.NODE_ENV === 'production' && config.trustProxy === false) {
+  // Atrás de load balancer sem TRUST_PROXY, todos os clientes compartilham o IP do proxy:
+  // o rate limit e o orçamento de caracteres passariam a valer para todos juntos.
+  logger.warn('TRUST_PROXY=false em produção: defina o número de proxies à frente do serviço');
+}
+
 const server = app.listen(config.port, config.host, () => {
   // Registra só o nome do provider; a configuração completa contém a chave e nunca é logada.
   logger.info('servidor iniciado', { host: config.host, port: config.port, provider: config.translation.provider });

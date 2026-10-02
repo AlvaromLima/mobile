@@ -10,6 +10,7 @@ import type { TranslationProvider } from './providers/translation-provider.ts';
 import { healthRoutes } from './routes/health.routes.ts';
 import { translateRoutes } from './routes/translate.routes.ts';
 import { createTranslationService } from './services/translation.service.ts';
+import { createCharacterBudget } from './utils/character-budget.ts';
 import { createLogger, type Logger } from './utils/logger.ts';
 
 export interface BuildAppOptions {
@@ -30,6 +31,12 @@ export function buildApp({ config, provider, logger }: BuildAppOptions): Express
   const service = createTranslationService(provider ?? createTranslationProvider(config.translation), {
     timeoutMs: config.translationTimeoutMs,
   });
+  const budget = createCharacterBudget({
+    perClientLimit: config.charLimitPerClient,
+    perClientWindowMs: config.charLimitPerClientWindowMs,
+    globalLimit: config.charLimitGlobal,
+    globalWindowMs: config.charLimitGlobalWindowMs,
+  });
 
   const app = express();
   app.disable('x-powered-by');
@@ -44,7 +51,7 @@ export function buildApp({ config, provider, logger }: BuildAppOptions): Express
 
   app.use('/api', rateLimitMiddleware({ limit: config.rateLimitMax, windowMs: config.rateLimitWindowMs }));
   app.use('/api', express.json({ limit: BODY_LIMIT, strict: true, type: 'application/json' }));
-  app.use('/api/v1', translateRoutes(service));
+  app.use('/api/v1', translateRoutes(service, budget));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

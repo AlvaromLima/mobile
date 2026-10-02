@@ -18,6 +18,11 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     trustProxy: false,
     rateLimitMax: 1_000,
     rateLimitWindowMs: 60_000,
+    // Orçamento de caracteres desativado por padrão nos testes (0); testes específicos ativam.
+    charLimitPerClient: 0,
+    charLimitPerClientWindowMs: 3_600_000,
+    charLimitGlobal: 0,
+    charLimitGlobalWindowMs: 86_400_000,
     corsOrigins: [],
     translationTimeoutMs: 2_000,
     translation: { provider: 'mock' },
