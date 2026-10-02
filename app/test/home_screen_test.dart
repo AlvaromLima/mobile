@@ -6,28 +6,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tradutor/app.dart';
 import 'package:tradutor/core/constants/app_constants.dart';
-import 'package:tradutor/models/source_language.dart';
-import 'package:tradutor/services/simulated_translation.dart';
+import 'package:tradutor/core/errors/translation_failure.dart';
+import 'package:tradutor/models/translation_request.dart';
+import 'package:tradutor/models/translation_result.dart';
+import 'package:tradutor/providers/translation_providers.dart';
+import 'package:tradutor/repositories/translation_repository.dart';
 
-/// Tradução controlada pelo teste: cada chamada fica pendente até ser concluída.
-class FakeTranslator {
-  final calls = <(String, SourceLanguage)>[];
-  Completer<String> _completer = Completer<String>();
+/// Repositório controlado pelo teste: cada chamada fica pendente até ser concluída.
+class ControlledRepository implements TranslationRepository {
+  final requests = <TranslationRequest>[];
+  Completer<TranslationResult> _completer = Completer<TranslationResult>();
 
-  Future<String> call(String text, SourceLanguage source) {
-    calls.add((text, source));
-    _completer = Completer<String>();
+  @override
+  Future<TranslationResult> translate(TranslationRequest request) {
+    requests.add(request);
+    _completer = Completer<TranslationResult>();
     return _completer.future;
   }
 
-  void succeed(String value) => _completer.complete(value);
-  void fail() => _completer.completeError(Exception('falha simulada'));
+  void succeed(String translated) => _completer.complete(
+        TranslationResult(
+          originalText: requests.last.text,
+          translatedText: translated,
+          sourceLanguage: requests.last.sourceLanguage == 'auto' ? 'en' : requests.last.sourceLanguage,
+          targetLanguage: 'pt-BR',
+        ),
+      );
+
+  void fail([Object error = const ConnectionFailure()]) => _completer.completeError(error);
 }
 
-Future<void> pumpApp(WidgetTester tester, {TranslateFn? translate}) async {
+Future<void> pumpApp(WidgetTester tester, {TranslationRepository? repository}) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [if (translate != null) translateFnProvider.overrideWithValue(translate)],
+      overrides: [if (repository != null) translationRepositoryProvider.overrideWithValue(repository)],
       child: const TradutorApp(),
     ),
   );
@@ -58,7 +70,7 @@ String? Function() mockClipboard(WidgetTester tester, {String? initial}) {
 
 void main() {
   testWidgets('estado inicial: placeholder e ações desabilitadas', (tester) async {
-    await pumpApp(tester, translate: FakeTranslator().call);
+    await pumpApp(tester, repository: ControlledRepository());
 
     expect(find.text('Tradutor'), findsOneWidget);
     expect(find.text('TEXTO ORIGINAL'), findsOneWidget);
@@ -72,7 +84,7 @@ void main() {
   });
 
   testWidgets('texto só com espaços não habilita TRADUZIR', (tester) async {
-    await pumpApp(tester, translate: FakeTranslator().call);
+    await pumpApp(tester, repository: ControlledRepository());
 
     await tester.enterText(find.byType(TextField), '   ');
     await tester.pump();
@@ -80,8 +92,8 @@ void main() {
   });
 
   testWidgets('fluxo carregando e traduzido', (tester) async {
-    final fake = FakeTranslator();
-    await pumpApp(tester, translate: fake.call);
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
 
     await tester.enterText(find.byType(TextField), 'Good morning');
     await tester.pump();
@@ -99,12 +111,14 @@ void main() {
     expect(find.text('TRADUZIR'), findsOneWidget);
     expect(isEnabled(tester, 'Copiar'), isTrue);
     expect(isEnabled(tester, 'Compartilhar'), isTrue);
-    expect(fake.calls.single, ('Good morning', SourceLanguage.auto));
+    expect(fake.requests.single.text, 'Good morning');
+    expect(fake.requests.single.sourceLanguage, 'auto');
+    expect(fake.requests.single.targetLanguage, 'pt-BR');
   });
 
-  testWidgets('estado de erro mostra mensagem', (tester) async {
-    final fake = FakeTranslator();
-    await pumpApp(tester, translate: fake.call);
+  testWidgets('estado de erro mostra a mensagem da falha', (tester) async {
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
 
     await tester.enterText(find.byType(TextField), 'Hello');
     await tester.pump();
@@ -113,14 +127,29 @@ void main() {
     fake.fail();
     await tester.pumpAndSettle();
 
-    expect(find.text('Não foi possível traduzir. Tente novamente.'), findsOneWidget);
+    expect(find.text(const ConnectionFailure().message), findsOneWidget);
     expect(isEnabled(tester, 'Copiar'), isFalse);
     expect(isEnabled(tester, 'TRADUZIR'), isTrue);
   });
 
+  testWidgets('erro inesperado mostra mensagem genérica sem detalhes técnicos', (tester) async {
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
+
+    await tester.enterText(find.byType(TextField), 'Hello');
+    await tester.pump();
+    await tester.tap(find.text('TRADUZIR'));
+    await tester.pump();
+    fake.fail(StateError('detalhe interno'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(const UnknownFailure().message), findsOneWidget);
+    expect(find.textContaining('detalhe interno'), findsNothing);
+  });
+
   testWidgets('seletor envia o idioma escolhido', (tester) async {
-    final fake = FakeTranslator();
-    await pumpApp(tester, translate: fake.call);
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
 
     await tester.tap(find.text('Detectar automaticamente'));
     await tester.pumpAndSettle();
@@ -132,14 +161,14 @@ void main() {
     await tester.tap(find.text('TRADUZIR'));
     await tester.pump();
 
-    expect(fake.calls.single.$2, SourceLanguage.es);
+    expect(fake.requests.single.sourceLanguage, 'es');
     fake.succeed('Olá');
     await tester.pumpAndSettle();
   });
 
   testWidgets('limpar apaga o texto e volta ao estado inicial', (tester) async {
-    final fake = FakeTranslator();
-    await pumpApp(tester, translate: fake.call);
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
 
     await tester.enterText(find.byType(TextField), 'Hello');
     await tester.pump();
@@ -158,7 +187,7 @@ void main() {
 
   testWidgets('colar insere o texto da área de transferência', (tester) async {
     mockClipboard(tester, initial: 'Texto colado');
-    await pumpApp(tester, translate: FakeTranslator().call);
+    await pumpApp(tester, repository: ControlledRepository());
 
     await tester.tap(find.text('Colar'));
     await tester.pumpAndSettle();
@@ -169,7 +198,7 @@ void main() {
 
   testWidgets('colar respeita o limite de caracteres', (tester) async {
     mockClipboard(tester, initial: 'a' * (AppConstants.maxTextLength + 10));
-    await pumpApp(tester, translate: FakeTranslator().call);
+    await pumpApp(tester, repository: ControlledRepository());
 
     await tester.tap(find.text('Colar'));
     await tester.pumpAndSettle();
@@ -180,7 +209,7 @@ void main() {
 
   testWidgets('colar com área de transferência vazia avisa o usuário', (tester) async {
     mockClipboard(tester);
-    await pumpApp(tester, translate: FakeTranslator().call);
+    await pumpApp(tester, repository: ControlledRepository());
 
     await tester.tap(find.text('Colar'));
     await tester.pumpAndSettle();
@@ -190,8 +219,8 @@ void main() {
 
   testWidgets('copiar envia a tradução para a área de transferência', (tester) async {
     final clipboard = mockClipboard(tester);
-    final fake = FakeTranslator();
-    await pumpApp(tester, translate: fake.call);
+    final fake = ControlledRepository();
+    await pumpApp(tester, repository: fake);
 
     await tester.enterText(find.byType(TextField), 'Hello');
     await tester.pump();
@@ -228,8 +257,8 @@ void main() {
       addTearDown(tester.view.reset);
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-      final fake = FakeTranslator();
-      await pumpApp(tester, translate: fake.call);
+      final fake = ControlledRepository();
+      await pumpApp(tester, repository: fake);
       await tester.enterText(find.byType(TextField), 'Good morning, how are you? ' * 20);
       await tester.pump();
       await tester.tap(find.text('TRADUZIR'));

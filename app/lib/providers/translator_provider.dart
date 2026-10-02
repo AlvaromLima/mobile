@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/errors/translation_failure.dart';
 import '../models/source_language.dart';
-import '../services/simulated_translation.dart';
+import '../models/translation_result.dart';
+import 'translation_providers.dart';
 
 enum TranslationStatus { initial, loading, success, failure }
 
@@ -9,16 +11,17 @@ class TranslatorState {
   const TranslatorState({
     this.sourceLanguage = SourceLanguage.auto,
     this.status = TranslationStatus.initial,
-    this.translatedText,
+    this.result,
     this.errorMessage,
   });
 
   final SourceLanguage sourceLanguage;
   final TranslationStatus status;
-  final String? translatedText;
+  final TranslationResult? result;
   final String? errorMessage;
 
   bool get isLoading => status == TranslationStatus.loading;
+  String? get translatedText => result?.translatedText;
 }
 
 final translatorProvider = NotifierProvider<TranslatorNotifier, TranslatorState>(TranslatorNotifier.new);
@@ -34,34 +37,40 @@ class TranslatorNotifier extends Notifier<TranslatorState> {
     state = TranslatorState(
       sourceLanguage: language,
       status: state.status,
-      translatedText: state.translatedText,
+      result: state.result,
       errorMessage: state.errorMessage,
     );
   }
 
   Future<void> translate(String text) async {
-    if (text.trim().isEmpty || state.isLoading) return;
+    if (state.isLoading) return;
 
     final requestId = ++_requestId;
     final language = state.sourceLanguage;
     state = TranslatorState(sourceLanguage: language, status: TranslationStatus.loading);
 
     try {
-      final translated = await ref.read(translateFnProvider)(text, language);
+      final result = await ref.read(translationServiceProvider).translate(
+            text: text,
+            sourceLanguage: language.code,
+          );
       if (requestId != _requestId) return;
-      state = TranslatorState(
-        sourceLanguage: state.sourceLanguage,
-        status: TranslationStatus.success,
-        translatedText: translated,
-      );
+      state = TranslatorState(sourceLanguage: state.sourceLanguage, status: TranslationStatus.success, result: result);
+    } on TranslationFailure catch (failure) {
+      if (requestId != _requestId) return;
+      _fail(failure.message);
     } catch (_) {
       if (requestId != _requestId) return;
-      state = TranslatorState(
-        sourceLanguage: state.sourceLanguage,
-        status: TranslationStatus.failure,
-        errorMessage: 'Não foi possível traduzir. Tente novamente.',
-      );
+      _fail(const UnknownFailure().message);
     }
+  }
+
+  void _fail(String message) {
+    state = TranslatorState(
+      sourceLanguage: state.sourceLanguage,
+      status: TranslationStatus.failure,
+      errorMessage: message,
+    );
   }
 
   /// Volta ao estado inicial, mantendo o idioma escolhido.
