@@ -10,11 +10,19 @@ class TranslationResultCard extends StatelessWidget {
     required this.state,
     required this.onCopy,
     required this.onShare,
+    required this.onListen,
+    this.isSpeaking = false,
   });
 
   final TranslatorState state;
   final VoidCallback onCopy;
   final ValueChanged<Rect?> onShare;
+
+  /// Inicia ou para a leitura em voz alta. Nulo desabilita o botão.
+  final VoidCallback? onListen;
+
+  /// Leitura em andamento: o botão "Ouvir" vira "Parar".
+  final bool isSpeaking;
 
   @override
   Widget build(BuildContext context) {
@@ -42,13 +50,10 @@ class TranslationResultCard extends StatelessWidget {
         Wrap(
           spacing: 4,
           children: [
-            // Leitura em voz alta será implementada na etapa de Text-to-Speech.
-            const TextButton(
-              onPressed: null,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [Icon(Icons.volume_up_outlined), SizedBox(width: 8), Text('Ouvir')],
-              ),
+            TextButton.icon(
+              onPressed: hasResult ? onListen : null,
+              icon: Icon(isSpeaking ? Icons.stop_circle_outlined : Icons.volume_up_outlined),
+              label: Text(isSpeaking ? 'Parar' : 'Ouvir'),
             ),
             TextButton.icon(
               onPressed: hasResult ? onCopy : null,

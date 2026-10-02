@@ -22,6 +22,15 @@ Tela → TranslatorNotifier → TranslationService → BackendTranslationReposit
 - Teste de voz exige aparelho físico: o simulador iOS não reconhece fala, e emuladores Android dependem do microfone do computador e do app Google.
 - iOS com CocoaPods: incluir `PERMISSION_MICROPHONE=1` e `PERMISSION_SPEECH_RECOGNIZER=1` no `post_install` do `ios/Podfile` (gerado no primeiro build num Mac).
 
+## Leitura em voz alta (Text-to-Speech)
+
+- Botão "Ouvir" na área "Português do Brasil", via `flutter_tts` com o motor nativo do aparelho, sempre em pt-BR. Durante a leitura o botão vira "Parar".
+- Voz escolhida automaticamente: a melhor voz pt-BR que funciona sem internet (qualidade premium/enhanced no iOS; very high/high no Android).
+- Textos acima de 3.900 caracteres são lidos em trechos (limite de 4.000 do Android), quebrando no fim das frases.
+- A leitura para ao tocar no microfone, ao traduzir de novo, ao limpar e quando o app vai para segundo plano.
+- Sem voz pt-BR instalada, o app orienta a instalar nas configurações de texto para fala do aparelho.
+- iOS: a leitura toca mesmo com o aparelho no modo silencioso.
+
 ## URL do backend
 
 Centralizada em `lib/core/config/app_config.dart`, definida no build por `--dart-define=API_BASE_URL=...`.

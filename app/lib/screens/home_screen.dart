@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/constants/app_constants.dart';
 import '../models/source_language.dart';
+import '../providers/text_to_speech_provider.dart';
 import '../providers/translator_provider.dart';
 import '../providers/voice_input_provider.dart';
 import '../widgets/language_selector.dart';
@@ -41,6 +42,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     if (lifecycle != AppLifecycleState.paused && lifecycle != AppLifecycleState.hidden) return;
+    ref.read(textToSpeechProvider.notifier).stop();
     final status = ref.read(voiceInputProvider).status;
     if (status == VoiceStatus.listening || status == VoiceStatus.processing) {
       ref.read(voiceInputProvider.notifier).interrupt();
@@ -63,6 +65,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     if (voice.isActive) return;
 
     FocusScope.of(context).unfocus();
+    // Leitura e escuta não podem disputar o áudio (no iOS, a sessão de áudio é compartilhada).
+    await ref.read(textToSpeechProvider.notifier).stop();
+    if (!mounted) return;
     final selected = ref.read(translatorProvider).sourceLanguage;
     // O reconhecedor nativo precisa do idioma antes de ouvir; no modo automático, o usuário informa.
     final language = selected == SourceLanguage.auto ? await _askSpokenLanguage() : selected;
@@ -154,12 +159,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   void _clear() {
+    ref.read(textToSpeechProvider.notifier).stop();
     _textController.clear();
     ref.read(translatorProvider.notifier).clear();
   }
 
   void _translate() {
     FocusScope.of(context).unfocus();
+    ref.read(textToSpeechProvider.notifier).stop();
     ref.read(translatorProvider.notifier).translate(_textController.text);
   }
 
@@ -182,6 +189,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final notifier = ref.read(translatorProvider.notifier);
     final voice = ref.watch(voiceInputProvider);
     ref.listen(voiceInputProvider, _onVoiceChanged);
+    final playback = ref.watch(textToSpeechProvider);
+    ref.listen(textToSpeechProvider, (previous, next) {
+      final message = next.errorMessage;
+      if (next.status == PlaybackStatus.failure && previous?.status != PlaybackStatus.failure && message != null) {
+        _showMessage(message);
+      }
+    });
 
     final busy = state.isLoading || voice.isActive;
     // Microfone fica ativo durante a escuta (para parar), mas não enquanto pede permissão ou processa.
@@ -234,6 +248,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   state: state,
                   onCopy: () => _copy(state.translatedText ?? ''),
                   onShare: (origin) => _share(state.translatedText ?? '', origin),
+                  isSpeaking: playback.isSpeaking,
+                  onListen: voice.isActive
+                      ? null
+                      : () => ref.read(textToSpeechProvider.notifier).toggle(state.translatedText ?? ''),
                 ),
               ],
             ),
