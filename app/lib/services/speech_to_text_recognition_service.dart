@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
@@ -103,8 +104,10 @@ class SpeechToTextRecognitionService implements SpeechRecognitionService {
       );
     } on VoiceFailure catch (failure) {
       _finishWithError(controller, failure);
-    } catch (_) {
-      _finishWithError(controller, const SpeechServiceFailure());
+    } on PlatformException catch (e) {
+      _finishWithError(controller, SpeechServiceFailure(e.code));
+    } catch (e) {
+      _finishWithError(controller, SpeechServiceFailure(e.runtimeType.toString()));
     }
   }
 
@@ -181,13 +184,18 @@ class SpeechToTextRecognitionService implements SpeechRecognitionService {
       case 'error_client':
       case 'error_server_disconnected':
         return const SpeechInterruptedFailure();
+      case 'error_network':
+      case 'error_network_timeout':
+        return const SpeechNetworkFailure();
+      case 'error_busy':
+        return const SpeechBusyFailure();
       case 'error_speech_recognizer_disabled':
         return const SpeechUnavailableFailure();
       case 'error_language_not_supported':
       case 'error_language_unavailable':
         return const SpeechLanguageUnavailableFailure('o idioma escolhido');
     }
-    return const SpeechServiceFailure();
+    return SpeechServiceFailure(errorMsg);
   }
 
   @override

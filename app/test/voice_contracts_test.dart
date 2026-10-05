@@ -82,6 +82,8 @@ void main() {
       NoSpeechDetectedFailure(),
       SpeechNotRecognizedFailure(),
       SpeechInterruptedFailure(),
+      SpeechNetworkFailure(),
+      SpeechBusyFailure(),
       SpeechServiceFailure(),
       TextToSpeechUnavailableFailure(),
       TextToSpeechLanguageUnavailableFailure(),

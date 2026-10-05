@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -13,13 +14,17 @@ import 'package:tradutor/services/speech_to_text_recognition_service.dart';
 /// Substitui a ponte nativa do speech_to_text.
 class FakeSpeechPlatform extends SpeechToTextPlatform {
   bool initResult = true;
+  Object? initError;
   List<String> localeList = ['en_US:English (United States)', 'es_MX:Español (México)'];
   String? listenedLocale;
   int stops = 0;
   int cancels = 0;
 
   @override
-  Future<bool> initialize({debugLogging = false, List<SpeechConfigOption>? options}) async => initResult;
+  Future<bool> initialize({debugLogging = false, List<SpeechConfigOption>? options}) async {
+    if (initError != null) throw initError!;
+    return initResult;
+  }
 
   @override
   Future<bool> listen({
@@ -207,6 +212,15 @@ void main() {
       expect(service().listen(SourceLanguage.en), emitsFailure<SpeechUnavailableFailure>());
     });
 
+    test('exceção nativa vira falha do serviço com o código do erro', () async {
+      speech.initError = PlatformException(code: 'recognizerNotAvailable');
+      await expectLater(
+        service().listen(SourceLanguage.en),
+        emitsError(isA<SpeechServiceFailure>()
+            .having((f) => f.message, 'message', contains('código: recognizerNotAvailable'))),
+      );
+    });
+
     test('emite parciais e termina no resultado final', () async {
       final s = service();
       final collected = await startListening(s, SourceLanguage.en);
@@ -255,7 +269,10 @@ void main() {
       'error_speech_timeout': emitsFailure<NoSpeechDetectedFailure>(),
       'error_permission': emitsFailure<MicrophonePermissionDeniedFailure>(),
       'error_audio_error': emitsFailure<MicrophoneUnavailableFailure>(),
-      'error_network': emitsFailure<SpeechServiceFailure>(),
+      'error_network': emitsFailure<SpeechNetworkFailure>(),
+      'error_network_timeout': emitsFailure<SpeechNetworkFailure>(),
+      'error_busy': emitsFailure<SpeechBusyFailure>(),
+      'error_server': emitsFailure<SpeechServiceFailure>(),
     };
     errorCases.forEach((errorMsg, matcher) {
       test('erro nativo $errorMsg é mapeado', () async {
@@ -295,7 +312,9 @@ void main() {
   });
 
   test('mapeamento de erros desconhecidos cai em falha do serviço', () {
-    expect(SpeechToTextRecognitionService.mapError('error_unknown (42)'), isA<SpeechServiceFailure>());
+    final unknown = SpeechToTextRecognitionService.mapError('error_unknown (42)');
+    expect(unknown, isA<SpeechServiceFailure>());
+    expect(unknown.message, contains('código: error_unknown (42)'), reason: 'o código ajuda o suporte a diagnosticar');
     expect(SpeechToTextRecognitionService.mapError('error_client'), isA<SpeechInterruptedFailure>());
     expect(
       SpeechToTextRecognitionService.mapError('error_language_unavailable'),

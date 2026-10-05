@@ -48,8 +48,26 @@ final class SpeechInterruptedFailure extends VoiceFailure {
   const SpeechInterruptedFailure() : super('O reconhecimento de voz foi interrompido. Tente novamente.');
 }
 
+final class SpeechNetworkFailure extends VoiceFailure {
+  const SpeechNetworkFailure()
+      : super('Sem internet para o reconhecimento de voz. Verifique a conexão e tente novamente.');
+}
+
+final class SpeechBusyFailure extends VoiceFailure {
+  const SpeechBusyFailure()
+      : super('O reconhecimento de voz está ocupado. Aguarde alguns segundos e tente novamente.');
+}
+
+/// [code] identifica o erro nativo (ex.: error_server) para o suporte diagnosticar pelo relato do usuário.
 final class SpeechServiceFailure extends VoiceFailure {
-  const SpeechServiceFailure() : super('Erro no serviço de reconhecimento de voz. Tente novamente.');
+  const SpeechServiceFailure([this.code])
+      : super(
+          code == null
+              ? 'Erro no serviço de reconhecimento de voz. Tente novamente.'
+              : 'Erro no serviço de reconhecimento de voz (código: $code). Tente novamente.',
+        );
+
+  final String? code;
 }
 
 // Text-to-Speech
